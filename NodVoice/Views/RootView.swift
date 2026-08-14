@@ -10,14 +10,20 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             List {
-                statusSection
-                transcriptSection
-                repliesSection
-                historySection
+                if session.phase == .choosing, !session.options.isEmpty {
+                    repliesSection
+                    compactStatus
+                    debugTranscript
+                } else {
+                    statusSection
+                    transcriptSection
+                    repliesSection
+                    historySection
+                }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("NodVoice")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(session.phase == .choosing ? "Pick a reply" : "NodVoice")
+            .navigationBarTitleDisplayMode(session.phase == .choosing ? .inline : .large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -170,6 +176,32 @@ struct RootView: View {
         }
     }
 
+    private var compactStatus: some View {
+        Section {
+            if !session.imuLine.isEmpty {
+                Text(session.imuLine)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            if isGestureFlash {
+                Text(session.motionStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var debugTranscript: some View {
+        Section {
+            DisclosureGroup("Heard (debug)") {
+                Text(session.transcript.isEmpty ? "No transcript" : session.transcript)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+
     private var isGestureFlash: Bool {
         ["Nod down", "Nod up", "Shake"].contains(session.motionStatus)
     }
@@ -209,28 +241,31 @@ struct RootView: View {
                     Button {
                         session.selectedIndex = index
                     } label: {
-                        HStack(alignment: .top, spacing: 12) {
+                        HStack(alignment: .top, spacing: 14) {
                             DwellRing(
                                 progress: index == session.selectedIndex ? session.dwellProgress : 0,
                                 selected: index == session.selectedIndex
                             )
-                            VStack(alignment: .leading, spacing: 4) {
+                            .frame(width: 36, height: 36)
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text(option.text)
-                                    .font(.body)
+                                    .font(index == session.selectedIndex ? .title3.weight(.semibold) : .body)
                                     .foregroundStyle(.primary)
                                     .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text(option.tone.capitalized)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer(minLength: 0)
                         }
+                        .padding(.vertical, 8)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(
                         index == session.selectedIndex
-                            ? Color.accentColor.opacity(0.12)
+                            ? Color.accentColor.opacity(0.16)
                             : nil
                     )
                     .accessibilityLabel("Reply \(index + 1), \(option.tone): \(option.text)")
@@ -239,7 +274,7 @@ struct RootView: View {
             } header: {
                 Text("Replies")
             } footer: {
-                Text("Stay on a reply. The circle fills, then it speaks.")
+                Text("Nod up or down. Stay on one. The circle fills, then it speaks.")
             }
         }
     }
@@ -289,7 +324,7 @@ private struct DwellRing: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(selected ? Color.accentColor : Color.secondary)
         }
-        .frame(width: 26, height: 26)
+        .frame(width: 36, height: 36)
         .accessibilityHidden(true)
     }
 }
