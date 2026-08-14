@@ -45,6 +45,8 @@ jobs:
       - name: Build for Simulator (CODE_SIGNING_ALLOWED=NO)
         run: |
           set -o pipefail
+          xcodebuild -project NodVoice.xcodeproj -list
+          set +e
           xcodebuild \
             -project NodVoice.xcodeproj \
             -scheme NodVoice \
@@ -54,16 +56,30 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            build | xcbeautify || xcodebuild \
-            -project NodVoice.xcodeproj \
-            -scheme NodVoice \
-            -configuration Debug \
-            -destination "generic/platform=iOS Simulator" \
-            -derivedDataPath DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            build
+            build 2>&1 | tee build.log | xcbeautify
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "Primary destination failed ($status), trying generic simulator..."
+            xcodebuild \
+              -project NodVoice.xcodeproj \
+              -target NodVoice \
+              -configuration Debug \
+              -sdk iphonesimulator \
+              -derivedDataPath DerivedData \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              ONLY_ACTIVE_ARCH=NO \
+              build 2>&1 | tee build-fallback.log | xcbeautify
+            status=${PIPESTATUS[0]}
+          fi
+          if [ "$status" -ne 0 ]; then
+            echo "==== tail build.log ===="
+            tail -80 build.log || true
+            echo "==== tail build-fallback.log ===="
+            tail -80 build-fallback.log || true
+          fi
+          exit $status
 
       - name: Upload build log on failure
         if: failure()
