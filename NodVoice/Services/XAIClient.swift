@@ -16,8 +16,8 @@ struct AppSettings: Equatable {
     static let speakerVolumeAccount = "speaker_volume"
     static let motionDebugAccount = "motion_debug"
 
-    /// Default chat model for multi-reply generation.
-    static let defaultChatModel = "grok-4.5"
+    /// Locked chat model. Grok 4.1 fast, no reasoning.
+    static let defaultChatModel = "grok-4-1-fast-non-reasoning"
     static let defaultVoice = "eve"
     static let defaultLanguage = "en"
     static let defaultOptionCount = 3
@@ -30,11 +30,9 @@ struct AppSettings: Equatable {
     static func load() -> AppSettings {
         KeychainStore.delete(account: apiKeyAccount)
         let countRaw = KeychainStore.get(account: optionCountAccount).flatMap(Int.init)
-        var model = KeychainStore.get(account: modelAccount) ?? defaultChatModel
-        if model == "grok-4.6" { model = defaultChatModel }
         let volumeRaw = KeychainStore.get(account: speakerVolumeAccount).flatMap(Double.init)
         return AppSettings(
-            chatModel: model,
+            chatModel: defaultChatModel,
             voiceID: KeychainStore.get(account: voiceAccount) ?? defaultVoice,
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
             optionCount: max(2, min(5, countRaw ?? defaultOptionCount)),

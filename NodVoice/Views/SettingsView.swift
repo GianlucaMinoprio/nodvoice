@@ -4,7 +4,6 @@ struct SettingsView: View {
     @EnvironmentObject private var session: SessionController
     @Environment(\.dismiss) private var dismiss
 
-    @State private var chatModel: String = AppSettings.defaultChatModel
     @State private var voiceID: String = AppSettings.defaultVoice
     @State private var language: String = AppSettings.defaultLanguage
     @State private var optionCount: Int = AppSettings.defaultOptionCount
@@ -13,14 +12,12 @@ struct SettingsView: View {
     @State private var showSuperGrok = false
     @State private var signedIn = SuperGrokSession.isSignedIn
     @State private var accountHint = SuperGrokSession.load()?.accountHint
-
-    private let modelChoices = [
-        "grok-4.5",
-        "grok-4-1-fast-non-reasoning",
-        "grok-4.6"
-    ]
+    @State private var previewingVoice: String?
+    @State private var previewError: String?
 
     private let voiceChoices = ["eve", "ara", "rex", "sal", "leo", "ursa"]
+    private let previewLine = "Hey, it's me. Does this voice feel right for a quick reply?"
+    private let client = XAIClient()
 
     private let languageChoices: [(code: String, name: String)] = [
         ("en", "English"),
@@ -73,30 +70,44 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Picker("Chat", selection: $chatModel) {
-                        ForEach(modelChoices, id: \.self) { model in
-                            Text(model).tag(model)
+                    ForEach(voiceChoices, id: \.self) { voice in
+                        HStack {
+                            Button {
+                                voiceID = voice
+                            } label: {
+                                Label(voice.capitalized, systemImage: voiceID == voice ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(voiceID == voice ? Color.accentColor : Color.primary)
+                            }
+                            .buttonStyle(.plain)
+                            Spacer()
+                            Button {
+                                preview(voice)
+                            } label: {
+                                if previewingVoice == voice {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.title3)
+                                }
+                            }
+                            .disabled(!signedIn || previewingVoice != nil)
+                            .accessibilityLabel("Preview \(voice)")
                         }
                     }
-                    if !modelChoices.contains(chatModel) {
-                        TextField("Custom model id", text: $chatModel)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .font(.body.monospaced())
+                    if let previewError {
+                        Text(previewError)
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
                     }
+                } header: {
+                    Text("Voice")
+                } footer: {
+                    Text(signedIn
+                         ? "Tap play to hear: \"\(previewLine)\""
+                         : "Sign in with SuperGrok to preview voices.")
+                }
 
-                    Picker("Voice", selection: $voiceID) {
-                        ForEach(voiceChoices, id: \.self) { voice in
-                            Text(voice).tag(voice)
-                        }
-                    }
-                    if !voiceChoices.contains(voiceID) {
-                        TextField("Custom voice id", text: $voiceID)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .font(.body.monospaced())
-                    }
-
+                Section {
                     Picker("Language", selection: $language) {
                         ForEach(languageChoices, id: \.code) { item in
                             Text(item.name).tag(item.code)
@@ -112,9 +123,9 @@ struct SettingsView: View {
                         Slider(value: $speakerVolume, in: 0.2...1, step: 0.05)
                     }
                 } header: {
-                    Text("Model")
+                    Text("Speech")
                 } footer: {
-                    Text("Language for Grok STT and TTS.")
+                    Text("Language for Grok STT and TTS. Replies always use Grok 4.1.")
                 }
 
                 Section {
@@ -172,6 +183,7 @@ struct SettingsView: View {
                 }
             }
             .onAppear(perform: load)
+            .onDisappear { session.player.stop() }
             .sheet(isPresented: $showSuperGrok, onDismiss: refreshAuth) {
                 SuperGrokSignInView {
                     refreshAuth()
@@ -181,7 +193,6 @@ struct SettingsView: View {
     }
 
     private func load() {
-        chatModel = session.settings.chatModel
         voiceID = session.settings.voiceID
         language = session.settings.language
         optionCount = session.settings.optionCount
@@ -196,7 +207,7 @@ struct SettingsView: View {
     }
 
     private func save() {
-        session.settings.chatModel = nonempty(chatModel, default: AppSettings.defaultChatModel)
+        session.settings.chatModel = AppSettings.defaultChatModel
         session.settings.voiceID = nonempty(voiceID, default: AppSettings.defaultVoice)
         session.settings.language = nonempty(language, default: AppSettings.defaultLanguage)
         session.settings.optionCount = optionCount
@@ -204,6 +215,27 @@ struct SettingsView: View {
         session.settings.showMotionDebug = showMotionDebug
         session.saveSettings()
         dismiss()
+    }
+
+    private func preview(_ voice: String) {
+        previewError = nil
+        voiceID = voice
+        previewingVoice = voice
+        Task {
+            defer { previewingVoice = nil }
+            do {
+                let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: "")
+                let audio = try await client.synthesize(
+                    text: previewLine,
+                    apiKey: bearer,
+                    voiceID: voice,
+                    language: nonempty(language, default: AppSettings.defaultLanguage)
+                )
+                try await session.player.play(data: audio, volume: Float(speakerVolume))
+            } catch {
+                previewError = error.localizedDescription
+            }
+        }
     }
 
     private func nonempty(_ value: String, default defaultValue: String) -> String {

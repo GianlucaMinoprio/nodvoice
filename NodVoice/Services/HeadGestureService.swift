@@ -50,6 +50,8 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     private var nodArmed = true
     private var shakeSign = 0
     private var shakeArmedAt: TimeInterval = 0
+    private var imuWatchdog: Task<Void, Never>?
+    private var imuRestarts = 0
 
     override init() {
         super.init()
@@ -99,7 +101,9 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
             statusText = "Put AirPods in to use NodVoice"
             return
         }
-        guard !isRunning else { return }
+        // Always re-subscribe. Audio session / background kills the stream
+        // while isRunning stays true, so a no-op start() leaves nods dead.
+        manager.stopDeviceMotionUpdates()
         isAvailable = true
         headphonesConnected = true
         resetTracking()
@@ -107,30 +111,39 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, error in
             guard let self else { return }
             if let error {
-                Task { @MainActor in
+                DispatchQueue.main.async {
                     self.manager.stopDeviceMotionUpdates()
                     self.isRunning = false
                     self.statusText = "Motion error: \(error.localizedDescription)"
+                    self.log.error("imu error \(error.localizedDescription, privacy: .public)")
                 }
                 return
             }
             guard let motion else { return }
-            Task { @MainActor in
+            DispatchQueue.main.async {
                 guard self.isRunning else { return }
                 self.ingest(motion)
             }
         }
         isRunning = true
         statusText = "AirPods motion: tracking"
-        Task { @MainActor in
+        imuWatchdog?.cancel()
+        imuWatchdog = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            if self.isRunning, self.sampleCount == 0 {
-                self.statusText = "AirPods in, but no IMU yet. Reseat buds. Needs AirPods Pro / Max with head tracking."
-            }
+            guard !Task.isCancelled, self.isRunning, self.sampleCount == 0 else { return }
+            self.statusText = "AirPods in, but no IMU yet. Reseat buds."
+            self.log.error("imu watchdog: 0 samples after restart")
+            guard self.imuRestarts < 2 else { return }
+            self.imuRestarts += 1
+            self.manager.stopDeviceMotionUpdates()
+            self.isRunning = false
+            self.start()
         }
     }
 
     func stop() {
+        imuWatchdog?.cancel()
+        imuWatchdog = nil
         manager.stopDeviceMotionUpdates()
         isRunning = false
         resetTracking()
@@ -145,6 +158,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         lastYaw = yaw
         lastRoll = roll
         sampleCount += 1
+        if sampleCount == 1 { imuRestarts = 0 }
         if sampleCount % 15 == 0 {
             liveLine = String(
                 format: "IMU  pitch %+.0f°  yaw %+.0f°  roll %+.0f°  n=%d",
