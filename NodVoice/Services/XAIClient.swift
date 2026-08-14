@@ -20,7 +20,7 @@ struct AppSettings: Equatable {
     static let defaultChatModel = "grok-4-1-fast-non-reasoning"
     static let defaultVoice = "eve"
     static let defaultLanguage = "en"
-    static let defaultOptionCount = 3
+    static let defaultOptionCount = 4
     static let defaultSpeakerVolume = 0.7
 
     var hasLiveCredential: Bool {
@@ -31,11 +31,12 @@ struct AppSettings: Equatable {
         KeychainStore.delete(account: apiKeyAccount)
         let countRaw = KeychainStore.get(account: optionCountAccount).flatMap(Int.init)
         let volumeRaw = KeychainStore.get(account: speakerVolumeAccount).flatMap(Double.init)
+        let migratedCount = migratedOptionCount(from: countRaw)
         return AppSettings(
             chatModel: defaultChatModel,
             voiceID: KeychainStore.get(account: voiceAccount) ?? defaultVoice,
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
-            optionCount: max(2, min(5, countRaw ?? defaultOptionCount)),
+            optionCount: migratedCount,
             speakerVolume: min(1, max(0.2, volumeRaw ?? defaultSpeakerVolume)),
             showMotionDebug: true
         )
@@ -49,6 +50,18 @@ struct AppSettings: Equatable {
         KeychainStore.set(String(optionCount), account: Self.optionCountAccount)
         KeychainStore.set(String(speakerVolume), account: Self.speakerVolumeAccount)
         KeychainStore.set(showMotionDebug ? "1" : "0", account: Self.motionDebugAccount)
+    }
+
+    /// One-shot: old default was 3. Bump that (or a missing value) to 4, then leave later stepper choices alone.
+    private static func migratedOptionCount(from stored: Int?) -> Int {
+        let flag = "option_count_v4"
+        if KeychainStore.get(account: flag) == "1" {
+            return max(2, min(5, stored ?? defaultOptionCount))
+        }
+        let next = (stored == nil || stored == 3) ? defaultOptionCount : max(2, min(5, stored ?? defaultOptionCount))
+        KeychainStore.set("1", account: flag)
+        KeychainStore.set(String(next), account: optionCountAccount)
+        return next
     }
 }
 
@@ -142,17 +155,35 @@ actor XAIClient {
         let bearer = bearer.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !bearer.isEmpty else { throw XAIClientError.missingAPIKey }
 
+        let mixRule: String
+        if settings.optionCount >= 4 {
+            mixRule = """
+            - The set MUST include at least one negative reply (decline, push back, not now) and one neutral reply (maybe, later, need more). The rest are usable alternatives, not four ways to say yes.
+            - Label tone as one of: positive, negative, neutral, alternative
+            """
+        } else if settings.optionCount == 3 {
+            mixRule = """
+            - Include at least one negative or one neutral reply. Do not return three similar yeses.
+            - Label tone as one of: positive, negative, neutral, alternative
+            """
+        } else {
+            mixRule = """
+            - Make the two replies meaningfully different, not paraphrases.
+            - Label tone as one of: positive, negative, neutral, alternative
+            """
+        }
+
         let system = """
         You are NodVoice, a silent copilot in the user's ear.
-        Given overheard conversation transcript, propose \(settings.optionCount) short spoken replies the USER could say next.
+        Given overheard conversation transcript, propose exactly \(settings.optionCount) short spoken replies the USER could say next.
         Rules:
         - Each option is something the user would speak out loud (1 sentence, max ~25 words)
-        - Vary tone: e.g. direct, warm, witty, clarifying
+        \(mixRule)
         - No markdown, no quotes around the whole option
         - Never use em dashes or unicode dashes. Use a comma, period, or hyphen.
         - Prefer natural conversational English unless the transcript is clearly another language
         - If the transcript is messy or accented, reply to the likely meaning, not the garbled words
-        - Return ONLY valid JSON: {"options":[{"text":"...","tone":"direct"}, ...]}
+        - Return ONLY valid JSON: {"options":[{"text":"...","tone":"negative"}, ...]}
         """
 
         var messages: [[String: String]] = [
@@ -179,7 +210,7 @@ actor XAIClient {
         var payload: [String: Any] = [
             "model": settings.chatModel,
             "temperature": 0.4,
-            "max_tokens": 280,
+            "max_tokens": 360,
             "response_format": ["type": "json_object"],
             "messages": messages
         ]
