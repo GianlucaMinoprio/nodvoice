@@ -1,0 +1,15 @@
+.DS_Store
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+Config/Secrets.xcconfig
+.env
+.idea/
+.vscode/
