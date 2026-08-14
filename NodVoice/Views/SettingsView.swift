@@ -8,7 +8,7 @@ struct SettingsView: View {
     @State private var language: String = AppSettings.defaultLanguage
     @State private var optionCount: Int = AppSettings.defaultOptionCount
     @State private var speakerVolume: Double = AppSettings.defaultSpeakerVolume
-    @State private var showMotionDebug = false
+    @State private var dwellSeconds: Double = AppSettings.defaultDwellSeconds
     @State private var showSuperGrok = false
     @State private var signedIn = SuperGrokSession.isSignedIn
     @State private var accountHint = SuperGrokSession.load()?.accountHint
@@ -103,7 +103,7 @@ struct SettingsView: View {
                     Text("Voice")
                 } footer: {
                     Text(signedIn
-                         ? "Tap play to hear: \"\(previewLine)\""
+                         ? "Tap play to hear a sample on the phone speaker."
                          : "Sign in with SuperGrok to preview voices.")
                 }
 
@@ -125,7 +125,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Speech")
                 } footer: {
-                    Text("Language for Grok STT and TTS. Replies always use Grok 4.1.")
+                    Text("Language for listening and speaking. Replies use Grok 4.1.")
                 }
 
                 Section {
@@ -141,31 +141,20 @@ struct SettingsView: View {
                         Text("Start or stop session")
                             .foregroundStyle(.secondary)
                     }
-                    LabeledContent("Stay on a reply") {
-                        Text("Speak after 2.5s")
-                            .foregroundStyle(.secondary)
-                    }
-                    LabeledContent("Silence") {
-                        Text("Drafts replies")
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Stay on a reply \(dwellLabel)")
+                        Slider(value: $dwellSeconds, in: 1.5...4, step: 0.5)
                     }
                 } header: {
                     Text("Gestures")
                 } footer: {
-                    Text("Shake to start. After someone pauses, options appear. Hold a reply to speak from the phone speaker. Shake stops the session.")
+                    Text("Shake to start. After a pause, replies appear. Hold a reply to speak from the phone speaker. Shake stops the session.")
                 }
 
                 Section {
                     LabeledContent("App") {
                         Text("NodVoice 1.0")
                             .foregroundStyle(.secondary)
-                    }
-                    Toggle("Show motion debug", isOn: $showMotionDebug)
-                    Link(destination: URL(string: "https://docs.x.ai/developers/model-capabilities/audio/voice")!) {
-                        Label("xAI voice docs", systemImage: "link")
-                    }
-                    Link(destination: URL(string: "https://x.com/gminoprio/status/2088126653507739720")!) {
-                        Label("Original tweet", systemImage: "link")
                     }
                 } header: {
                     Text("About")
@@ -192,18 +181,26 @@ struct SettingsView: View {
         }
     }
 
+    private var dwellLabel: String {
+        if dwellSeconds == dwellSeconds.rounded() {
+            return "\(Int(dwellSeconds))s"
+        }
+        return String(format: "%.1fs", dwellSeconds)
+    }
+
     private func load() {
         voiceID = session.settings.voiceID
         language = session.settings.language
         optionCount = session.settings.optionCount
         speakerVolume = session.settings.speakerVolume
-        showMotionDebug = session.settings.showMotionDebug
+        dwellSeconds = session.settings.dwellSeconds
         refreshAuth()
     }
 
     private func refreshAuth() {
         signedIn = SuperGrokSession.isSignedIn
         accountHint = SuperGrokSession.load()?.accountHint
+        session.refreshGrokAuth()
     }
 
     private func save() {
@@ -212,7 +209,7 @@ struct SettingsView: View {
         session.settings.language = nonempty(language, default: AppSettings.defaultLanguage)
         session.settings.optionCount = optionCount
         session.settings.speakerVolume = speakerVolume
-        session.settings.showMotionDebug = showMotionDebug
+        session.settings.dwellSeconds = dwellSeconds
         session.saveSettings()
         dismiss()
     }

@@ -17,7 +17,7 @@ enum SessionPhase: Equatable {
         case .idle: return "Ready"
         case .listening: return "Listening"
         case .transcribing: return "Transcribing"
-        case .thinking: return "Drafting"
+        case .thinking: return "Building replies"
         case .choosing: return "Choose reply"
         case .speaking: return "Speaking"
         case .error: return "Error"

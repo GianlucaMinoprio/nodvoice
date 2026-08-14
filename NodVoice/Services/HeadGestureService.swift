@@ -1,7 +1,6 @@
 import Combine
 import CoreMotion
 import Foundation
-import os
 
 enum DeviceEnvironment {
     static var isSimulator: Bool {
@@ -25,16 +24,10 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     @Published private(set) var isAvailable = false
     @Published private(set) var headphonesConnected = false
     @Published private(set) var isRunning = false
-    @Published private(set) var lastPitch: Double = 0
-    @Published private(set) var lastYaw: Double = 0
-    @Published private(set) var lastRoll: Double = 0
-    @Published private(set) var sampleCount: Int = 0
-    @Published private(set) var liveLine = ""
-    @Published private(set) var statusText = "AirPods motion: off"
+    @Published private(set) var hasSamples = false
     @Published var lastGesture: Gesture?
 
     let gestureSubject = PassthroughSubject<Gesture, Never>()
-    private let log = Logger(subsystem: "com.gianlucaminoprio.nodvoice", category: "imu")
 
     private let manager = CMHeadphoneMotionManager()
     private let queue = OperationQueue()
@@ -47,6 +40,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
 
     private var pitchBaseline: Double?
     private var yawBaseline: Double?
+    private var lastYaw: Double = 0
     private var nodArmed = true
     private var shakeSign = 0
     private var shakeArmedAt: TimeInterval = 0
@@ -63,7 +57,6 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         if DeviceEnvironment.isSimulator {
             headphonesConnected = false
             isAvailable = false
-            statusText = "Simulator: tap gestures"
             return
         }
         let connected = manager.isDeviceMotionAvailable
@@ -71,11 +64,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         isAvailable = connected
         if !connected {
             isRunning = false
-            statusText = "Put AirPods in to use NodVoice"
-        } else if isRunning {
-            statusText = "AirPods motion: tracking"
-        } else {
-            statusText = "AirPods connected"
+            hasSamples = false
         }
     }
 
@@ -96,7 +85,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
             isAvailable = false
             headphonesConnected = false
             isRunning = false
-            statusText = "Put AirPods in to use NodVoice"
+            hasSamples = false
             return
         }
         if isRunning { return }
@@ -106,12 +95,11 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
 
         manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, error in
             guard let self else { return }
-            if let error {
+            if error != nil {
                 DispatchQueue.main.async {
                     self.manager.stopDeviceMotionUpdates()
                     self.isRunning = false
-                    self.statusText = "Motion error: \(error.localizedDescription)"
-                    self.log.error("imu error \(error.localizedDescription, privacy: .public)")
+                    self.hasSamples = false
                 }
                 return
             }
@@ -122,8 +110,6 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
             }
         }
         isRunning = true
-        statusText = "AirPods motion: tracking"
-        log.info("imu stream started")
     }
 
     func stop() {
@@ -136,21 +122,8 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     private func ingest(_ motion: CMDeviceMotion) {
         let pitch = motion.attitude.pitch
         let yaw = motion.attitude.yaw
-        let roll = motion.attitude.roll
-        lastPitch = pitch
         lastYaw = yaw
-        lastRoll = roll
-        sampleCount += 1
-        liveLine = String(
-            format: "IMU  pitch %+.0f°  yaw %+.0f°  roll %+.0f°  n=%d",
-            pitch * 180 / .pi,
-            yaw * 180 / .pi,
-            roll * 180 / .pi,
-            sampleCount
-        )
-        if sampleCount % 45 == 0 {
-            log.info("imu pitch=\(pitch, format: .fixed(precision: 2)) yaw=\(yaw, format: .fixed(precision: 2)) n=\(self.sampleCount)")
-        }
+        if !hasSamples { hasSamples = true }
 
         if pitchBaseline == nil { pitchBaseline = pitch }
         if yawBaseline == nil { yawBaseline = yaw }
@@ -202,7 +175,6 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
             return
         }
 
-        // Return swing can be smaller than the first flick.
         let opposite = Double(shakeSign) * yawDelta <= -shakeYawThreshold * 0.55
         if opposite {
             shakeSign = 0
@@ -216,19 +188,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         guard now - lastGestureAt >= gestureCooldown else { return }
         lastGestureAt = now
         lastGesture = gesture
-        switch gesture {
-        case .nodDown: statusText = "Nod down"
-        case .nodUp: statusText = "Nod up"
-        case .shake: statusText = "Shake"
-        }
-        log.info("gesture \(gesture.rawValue, privacy: .public)")
         gestureSubject.send(gesture)
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 700_000_000)
-            if self.lastGesture == gesture, self.isRunning {
-                self.statusText = "AirPods motion: tracking"
-            }
-        }
     }
 
     func emitManual(_ gesture: Gesture) {
@@ -241,8 +201,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         yawBaseline = nil
         nodArmed = true
         shakeSign = 0
-        sampleCount = 0
-        liveLine = ""
+        hasSamples = false
     }
 
     private func angleDifference(_ angle: Double, _ reference: Double) -> Double {

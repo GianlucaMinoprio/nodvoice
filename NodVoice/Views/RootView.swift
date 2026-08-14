@@ -12,8 +12,6 @@ struct RootView: View {
             List {
                 if session.phase == .choosing, !session.options.isEmpty {
                     repliesSection
-                    compactStatus
-                    debugTranscript
                 } else {
                     statusSection
                     transcriptSection
@@ -143,22 +141,10 @@ struct RootView: View {
             .buttonStyle(.plain)
             .disabled(session.gate != .connectGrok)
 
-            if session.gate == .ready, !session.imuLine.isEmpty {
-                Text(session.imuLine)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-
-            if session.gate == .ready, isGestureFlash {
-                Text(session.motionStatus)
+            if let errorMessage = session.phase.errorMessage {
+                Text(errorMessage)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            if session.gate == .ready, !session.debugLine.isEmpty {
-                Text(session.debugLine)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.orange)
             }
         } header: {
             Text("Session")
@@ -171,65 +157,30 @@ struct RootView: View {
             case .ready:
                 Text(session.phase == .choosing
                      ? "Stay on a reply. The circle fills, then it speaks."
-                     : "Shake to start. Pause to draft. Shake to stop.")
+                     : "Shake to start. After a pause, replies appear. Shake to stop.")
             }
         }
     }
 
-    private var compactStatus: some View {
-        Section {
-            if !session.imuLine.isEmpty {
-                Text(session.imuLine)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            if isGestureFlash {
-                Text(session.motionStatus)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var debugTranscript: some View {
-        Section {
-            DisclosureGroup("Heard (debug)") {
-                Text(session.transcript.isEmpty ? "No transcript" : session.transcript)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
-        }
-    }
-
-    private var isGestureFlash: Bool {
-        ["Nod down", "Nod up", "Shake"].contains(session.motionStatus)
-    }
-
-    private var airPodsLabel: String {
-        if session.isSimulator { return "Simulator" }
-        if session.head.headphonesConnected {
-            return session.head.isRunning ? "Tracking" : "Connected"
-        }
-        return "Not connected"
-    }
-
+    @ViewBuilder
     private var transcriptSection: some View {
-        Section {
-            if session.transcript.isEmpty {
-                ContentUnavailableView(
-                    "Nothing heard yet",
-                    systemImage: "ear",
-                    description: Text("Shake to listen. It stops on silence, or shake again to end.")
-                )
-                .listRowBackground(Color.clear)
-            } else {
+        if showsTranscript, !session.transcript.isEmpty {
+            Section {
                 Text(session.transcript)
                     .font(.body)
                     .textSelection(.enabled)
+            } header: {
+                Text("Heard")
             }
-        } header: {
-            Text("Heard")
+        }
+    }
+
+    private var showsTranscript: Bool {
+        switch session.phase {
+        case .listening, .transcribing, .thinking:
+            return true
+        default:
+            return false
         }
     }
 

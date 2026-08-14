@@ -1,6 +1,5 @@
 import Combine
 import Foundation
-import os
 import SwiftUI
 import UIKit
 
@@ -18,11 +17,8 @@ final class SessionController: ObservableObject {
     }
     @Published var history: [ConversationTurn] = []
     @Published var settings: AppSettings
-    @Published var motionStatus: String = ""
-    @Published var imuLine: String = ""
     @Published var imuLive = false
     @Published var grokSignedIn = SuperGrokSession.isSignedIn
-    @Published var debugLine: String = ""
     @Published var dwellProgress: Double = 0
 
     let capture = AudioCaptureService()
@@ -35,8 +31,7 @@ final class SessionController: ObservableObject {
     private var listenTask: Task<Void, Never>?
     private var dwellTask: Task<Void, Never>?
     private var ignoreGesturesUntil: TimeInterval = 0
-    private let dwellSeconds: TimeInterval = 2.5
-    private let log = Logger(subsystem: "com.gianlucaminoprio.nodvoice", category: "session")
+    private var dwellSeconds: TimeInterval { settings.dwellSeconds }
 
     init() {
         settings = AppSettings.load()
@@ -46,18 +41,10 @@ final class SessionController: ObservableObject {
                 self?.handle(gesture: gesture)
             }
 
-        // Mirror motion status for UI
-        head.$statusText
+        head.$hasSamples
+            .removeDuplicates()
             .receive(on: RunLoop.main)
-            .assign(to: &$motionStatus)
-
-        head.$liveLine
-            .receive(on: RunLoop.main)
-            .sink { [weak self] line in
-                self?.imuLine = line
-                self?.imuLive = !line.isEmpty
-            }
-            .store(in: &cancellables)
+            .assign(to: &$imuLive)
 
         head.$headphonesConnected
             .receive(on: RunLoop.main)
@@ -187,7 +174,6 @@ final class SessionController: ObservableObject {
         options = []
         selectedIndex = 0
         transcript = ""
-        debugLine = ""
         lockGestures(1.1)
 
         guard canUseApp else { return }
@@ -206,7 +192,6 @@ final class SessionController: ObservableObject {
             do {
                 try capture.start()
                 phase = .listening
-                debugLine = "Listening. Silence ends the turn. Shake stops."
                 head.start()
                 startListenMonitor()
             } catch {
@@ -219,7 +204,6 @@ final class SessionController: ObservableObject {
     /// Offline path: fake transcript + options so you can practice nod/shake.
     private func runDemoPipeline() async {
         phase = .listening
-        debugLine = "Demo listen. Silence will draft replies."
         head.start()
         startListenMonitor()
     }
@@ -260,7 +244,6 @@ final class SessionController: ObservableObject {
         selectedIndex = 0
         dwellProgress = 0
         phase = .idle
-        debugLine = "Session stopped"
         lockGestures(0.8)
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
@@ -318,13 +301,12 @@ final class SessionController: ObservableObject {
         case "reset":
             resetToIdle()
         default:
-            debugLine = "Unknown URL \(url.absoluteString)"
+            break
         }
     }
 
     func resetToIdle() {
         endSession()
-        debugLine = ""
     }
 
     // MARK: - Gestures
@@ -332,10 +314,8 @@ final class SessionController: ObservableObject {
     private func handle(gesture: HeadGestureService.Gesture) {
         let now = ProcessInfo.processInfo.systemUptime
         if now < ignoreGesturesUntil {
-            log.info("ignore \(gesture.rawValue, privacy: .public) lockout phase=\(String(describing: self.phase), privacy: .public)")
             return
         }
-        log.info("handle \(gesture.rawValue, privacy: .public) phase=\(String(describing: self.phase), privacy: .public)")
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         switch gesture {
         case .shake:
@@ -358,19 +338,10 @@ final class SessionController: ObservableObject {
 
     private func announceSelection() {
         guard let option = selectedOption else { return }
-        debugLine = "Reply \(selectedIndex + 1) of \(options.count)"
         UIAccessibility.post(
             notification: .announcement,
             argument: "Reply \(selectedIndex + 1). \(option.text)"
         )
-    }
-
-    private func label(for gesture: HeadGestureService.Gesture) -> String {
-        switch gesture {
-        case .nodDown: return "nod down"
-        case .nodUp: return "nod up"
-        case .shake: return "shake"
-        }
     }
 
     private func lockGestures(_ seconds: TimeInterval) {
@@ -386,7 +357,6 @@ final class SessionController: ObservableObject {
         ]
         selectedIndex = 0
         phase = .choosing
-        debugLine = "Hold on a reply for 2.5s to speak"
         lockGestures(0.5)
         restartDwell()
     }
@@ -485,17 +455,14 @@ final class SessionController: ObservableObject {
         guard piece.count > 2 else { return }
         if transcript.isEmpty {
             transcript = piece
-            debugLine = "Live transcript"
             return
         }
         if transcript.localizedCaseInsensitiveContains(piece) { return }
         if piece.localizedCaseInsensitiveContains(transcript) {
             transcript = piece
-            debugLine = "Live transcript"
             return
         }
         transcript = stitchTranscript(existing: transcript, incoming: piece)
-        debugLine = "Live transcript"
     }
 
     private func stitchTranscript(existing: String, incoming: String) -> String {
@@ -529,7 +496,6 @@ final class SessionController: ObservableObject {
             let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: "")
             if let lastChunk {
                 phase = .transcribing
-                debugLine = "STT…"
                 if let piece = try? await client.transcribe(
                     fileURL: lastChunk,
                     apiKey: bearer,
@@ -545,7 +511,6 @@ final class SessionController: ObservableObject {
             }
 
             phase = .thinking
-            debugLine = "Chat \(settings.chatModel)…"
             let replies = try await client.generateReplyOptions(
                 transcript: text,
                 prior: history,
@@ -557,7 +522,6 @@ final class SessionController: ObservableObject {
             options = replies
             selectedIndex = 0
             phase = .choosing
-            debugLine = "Hold on a reply for 2.5s to speak"
             lockGestures(0.6)
             restartDwell()
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -566,7 +530,6 @@ final class SessionController: ObservableObject {
         } catch {
             guard !Task.isCancelled else { return }
             phase = .error(error.localizedDescription)
-            debugLine = ""
         }
     }
 
@@ -585,7 +548,6 @@ final class SessionController: ObservableObject {
 
             let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: "")
             phase = .speaking
-            debugLine = "TTS \(settings.voiceID)…"
             let audio = try await client.synthesize(
                 text: option.text,
                 apiKey: bearer,

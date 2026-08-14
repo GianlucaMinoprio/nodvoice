@@ -6,7 +6,7 @@ struct AppSettings: Equatable {
     var language: String
     var optionCount: Int
     var speakerVolume: Double
-    var showMotionDebug: Bool
+    var dwellSeconds: Double
 
     static let apiKeyAccount = "xai_api_key"
     static let modelAccount = "chat_model"
@@ -14,7 +14,7 @@ struct AppSettings: Equatable {
     static let languageAccount = "language"
     static let optionCountAccount = "option_count"
     static let speakerVolumeAccount = "speaker_volume"
-    static let motionDebugAccount = "motion_debug"
+    static let dwellAccount = "dwell_seconds"
 
     /// Locked chat model. Grok 4.1 fast, no reasoning.
     static let defaultChatModel = "grok-4-1-fast-non-reasoning"
@@ -22,6 +22,7 @@ struct AppSettings: Equatable {
     static let defaultLanguage = "en"
     static let defaultOptionCount = 4
     static let defaultSpeakerVolume = 0.7
+    static let defaultDwellSeconds = 2.5
 
     var hasLiveCredential: Bool {
         SuperGrokSession.isSignedIn
@@ -31,6 +32,7 @@ struct AppSettings: Equatable {
         KeychainStore.delete(account: apiKeyAccount)
         let countRaw = KeychainStore.get(account: optionCountAccount).flatMap(Int.init)
         let volumeRaw = KeychainStore.get(account: speakerVolumeAccount).flatMap(Double.init)
+        let dwellRaw = KeychainStore.get(account: dwellAccount).flatMap(Double.init)
         let migratedCount = migratedOptionCount(from: countRaw)
         return AppSettings(
             chatModel: defaultChatModel,
@@ -38,7 +40,7 @@ struct AppSettings: Equatable {
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
             optionCount: migratedCount,
             speakerVolume: min(1, max(0.2, volumeRaw ?? defaultSpeakerVolume)),
-            showMotionDebug: true
+            dwellSeconds: min(4, max(1.5, dwellRaw ?? defaultDwellSeconds))
         )
     }
 
@@ -49,7 +51,7 @@ struct AppSettings: Equatable {
         KeychainStore.set(language, account: Self.languageAccount)
         KeychainStore.set(String(optionCount), account: Self.optionCountAccount)
         KeychainStore.set(String(speakerVolume), account: Self.speakerVolumeAccount)
-        KeychainStore.set(showMotionDebug ? "1" : "0", account: Self.motionDebugAccount)
+        KeychainStore.set(String(dwellSeconds), account: Self.dwellAccount)
     }
 
     /// One-shot: old default was 3. Bump that (or a missing value) to 4, then leave later stepper choices alone.
