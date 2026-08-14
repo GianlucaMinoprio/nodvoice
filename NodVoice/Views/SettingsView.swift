@@ -4,12 +4,10 @@ struct SettingsView: View {
     @EnvironmentObject private var session: SessionController
     @Environment(\.dismiss) private var dismiss
 
-    @State private var apiKey: String = ""
     @State private var chatModel: String = AppSettings.defaultChatModel
     @State private var voiceID: String = AppSettings.defaultVoice
     @State private var language: String = AppSettings.defaultLanguage
     @State private var optionCount: Int = AppSettings.defaultOptionCount
-    @State private var showKey = false
     @State private var showSuperGrok = false
     @State private var signedIn = SuperGrokSession.isSignedIn
     @State private var accountHint = SuperGrokSession.load()?.accountHint
@@ -21,6 +19,20 @@ struct SettingsView: View {
     ]
 
     private let voiceChoices = ["eve", "ara", "rex", "sal", "leo", "ursa"]
+
+    private let languageChoices: [(code: String, name: String)] = [
+        ("en", "English"),
+        ("es", "Spanish"),
+        ("fr", "French"),
+        ("it", "Italian"),
+        ("de", "German"),
+        ("pt", "Portuguese"),
+        ("ja", "Japanese"),
+        ("ko", "Korean"),
+        ("zh", "Chinese"),
+        ("ar", "Arabic"),
+        ("hi", "Hindi")
+    ]
 
     var body: some View {
         NavigationStack {
@@ -55,37 +67,10 @@ struct SettingsView: View {
                 } header: {
                     Text("SuperGrok")
                 } footer: {
-                    Text("Uses your grok.com or X Premium+ subscription. No API key required. Tokens stay in the Keychain on this phone.")
+                    Text("Uses your grok.com or X Premium+ subscription. Tokens stay in the Keychain on this phone.")
                 }
 
                 Section {
-                    HStack {
-                        Group {
-                            if showKey {
-                                TextField("xai-…", text: $apiKey)
-                            } else {
-                                SecureField("xai-…", text: $apiKey)
-                            }
-                        }
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .textContentType(.password)
-                        .font(.body.monospaced())
-
-                        Button {
-                            showKey.toggle()
-                        } label: {
-                            Image(systemName: showKey ? "eye.slash" : "eye")
-                        }
-                        .accessibilityLabel(showKey ? "Hide API key" : "Show API key")
-                    }
-                } header: {
-                    Text("xAI API Key")
-                } footer: {
-                    Text("Optional fallback if SuperGrok OAuth is gated on your plan. Stored in the Keychain on this device.")
-                }
-
-                Section("Model") {
                     Picker("Chat", selection: $chatModel) {
                         ForEach(modelChoices, id: \.self) { model in
                             Text(model).tag(model)
@@ -110,13 +95,23 @@ struct SettingsView: View {
                             .font(.body.monospaced())
                     }
 
-                    TextField("Language", text: $language)
+                    Picker("Language", selection: $language) {
+                        ForEach(languageChoices, id: \.code) { item in
+                            Text("\(item.name) (\(item.code))").tag(item.code)
+                        }
+                    }
+                    TextField("Language code", text: $language)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .font(.body.monospaced())
 
                     Stepper(value: $optionCount, in: 2...5) {
                         Text("Reply options: \(optionCount)")
                     }
+                } header: {
+                    Text("Model")
+                } footer: {
+                    Text("Pick a language or type a code (en, es, fr…).")
                 }
 
                 Section {
@@ -134,7 +129,7 @@ struct SettingsView: View {
                     Text("Needs AirPods with head tracking, in-ear, on a physical iPhone.")
                 }
 
-                Section("About") {
+                Section {
                     LabeledContent("App") {
                         Text("NodVoice 1.0")
                             .foregroundStyle(.secondary)
@@ -145,6 +140,8 @@ struct SettingsView: View {
                     Link(destination: URL(string: "https://x.com/gminoprio/status/2088126653507739720")!) {
                         Label("Original tweet", systemImage: "link")
                     }
+                } header: {
+                    Text("About")
                 }
             }
             .navigationTitle("Settings")
@@ -168,7 +165,6 @@ struct SettingsView: View {
     }
 
     private func load() {
-        apiKey = session.settings.apiKey
         chatModel = session.settings.chatModel
         voiceID = session.settings.voiceID
         language = session.settings.language
@@ -182,7 +178,6 @@ struct SettingsView: View {
     }
 
     private func save() {
-        session.settings.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         session.settings.chatModel = nonempty(chatModel, default: AppSettings.defaultChatModel)
         session.settings.voiceID = nonempty(voiceID, default: AppSettings.defaultVoice)
         session.settings.language = nonempty(language, default: AppSettings.defaultLanguage)

@@ -1,7 +1,6 @@
 import Foundation
 
 struct AppSettings: Equatable {
-    var apiKey: String
     var chatModel: String
     var voiceID: String
     var language: String
@@ -21,13 +20,12 @@ struct AppSettings: Equatable {
 
     var hasLiveCredential: Bool {
         SuperGrokSession.isSignedIn
-            || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     static func load() -> AppSettings {
+        KeychainStore.delete(account: apiKeyAccount)
         let countRaw = KeychainStore.get(account: optionCountAccount).flatMap(Int.init)
         return AppSettings(
-            apiKey: KeychainStore.get(account: apiKeyAccount) ?? "",
             chatModel: KeychainStore.get(account: modelAccount) ?? defaultChatModel,
             voiceID: KeychainStore.get(account: voiceAccount) ?? defaultVoice,
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
@@ -36,11 +34,7 @@ struct AppSettings: Equatable {
     }
 
     func save() {
-        if apiKey.isEmpty {
-            KeychainStore.delete(account: Self.apiKeyAccount)
-        } else {
-            KeychainStore.set(apiKey, account: Self.apiKeyAccount)
-        }
+        KeychainStore.delete(account: Self.apiKeyAccount)
         KeychainStore.set(chatModel, account: Self.modelAccount)
         KeychainStore.set(voiceID, account: Self.voiceAccount)
         KeychainStore.set(language, account: Self.languageAccount)
@@ -58,7 +52,7 @@ enum XAIClientError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            return "Sign in with SuperGrok or add an xAI API key in Settings."
+            return "Sign in with SuperGrok in Settings."
         case .badStatus(let code, let body):
             return "xAI HTTP \(code): \(body.prefix(280))"
         case .decodeFailed(let detail):

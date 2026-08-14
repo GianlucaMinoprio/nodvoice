@@ -151,8 +151,8 @@ struct RootView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            if session.settings.apiKey.isEmpty && !SuperGrokSession.isSignedIn {
-                Label("Demo mode — sign in with SuperGrok or add an API key", systemImage: "info.circle")
+            if !SuperGrokSession.isSignedIn {
+                Label("Demo mode — sign in with SuperGrok in Settings", systemImage: "info.circle")
                     .font(.footnote)
                     .foregroundStyle(.orange)
             }

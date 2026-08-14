@@ -1,7 +1,7 @@
 import Foundation
 
 /// SuperGrok / X Premium+ OAuth via the public xAI device-code client.
-/// Tokens live in the Keychain. API key remains a fallback in Settings.
+/// Tokens live in the Keychain. SuperGrok OAuth only.
 struct SuperGrokSession: Codable, Equatable {
     private static let account = "supergrok_oauth_session"
 
@@ -61,7 +61,7 @@ enum SuperGrokAuthError: LocalizedError {
         case .refreshFailed:
             return "SuperGrok session expired. Sign in again."
         case .missingCredential:
-            return "Sign in with SuperGrok or add an xAI API key in Settings."
+            return "Sign in with SuperGrok in Settings."
         }
     }
 }

@@ -1,42 +1,43 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
+	classes = {
+	};
 	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		9A05E01FE33642488AF78430 /* NodVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CAD417732843C089CC9873 /* NodVoiceApp.swift */; };
-		650BCFD60B31430B892DFFF7 /* SessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E406E8FB20594256AD9445AC /* SessionController.swift */; };
-		8F16EDAE519143E6A2022C7D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F50ED5955F2485DB2DC4896 /* Models.swift */; };
-		9E7C55E893E14AC2987D9802 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA1DD1A74894409ACBCA7D3 /* AudioCaptureService.swift */; };
+		002EFB98CFD743D789F2F0CE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84456D0BEAE42DF9C27BF42 /* SettingsView.swift */; };
 		529832C789B54CC183BB5532 /* HeadGestureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */; };
-		914349C3ED7749919B26838F /* SpeechPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */; };
-		FB72C0C078524416AF82B357 /* XAIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138DEE481E4C4447889C0185 /* XAIClient.swift */; };
+		5C5428ACFBC848D38918788D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6257F0D4CCD49AE93A988FC /* RootView.swift */; };
+		650BCFD60B31430B892DFFF7 /* SessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E406E8FB20594256AD9445AC /* SessionController.swift */; };
 		8B2F0D3C5E905214B7C6DA12 /* SuperGrokAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */; };
+		8F16EDAE519143E6A2022C7D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F50ED5955F2485DB2DC4896 /* Models.swift */; };
+		914349C3ED7749919B26838F /* SpeechPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */; };
+		9A05E01FE33642488AF78430 /* NodVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CAD417732843C089CC9873 /* NodVoiceApp.swift */; };
+		9E7C55E893E14AC2987D9802 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA1DD1A74894409ACBCA7D3 /* AudioCaptureService.swift */; };
 		AD4B2F5E70127436D9E8FC34 /* SuperGrokSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */; };
 		B54213BA4A234FC998D5BEDB /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C39E72E0D214863B2AA60CC /* KeychainStore.swift */; };
-		5C5428ACFBC848D38918788D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6257F0D4CCD49AE93A988FC /* RootView.swift */; };
-		002EFB98CFD743D789F2F0CE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84456D0BEAE42DF9C27BF42 /* SettingsView.swift */; };
 		C90BD768C70D40AB95870B8E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F92D062869B425CA1E7A55D /* Assets.xcassets */; };
+		FB72C0C078524416AF82B357 /* XAIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138DEE481E4C4447889C0185 /* XAIClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		B1671D423BF046569ED976D9 /* NodVoice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NodVoice.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D7CAD417732843C089CC9873 /* NodVoiceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodVoiceApp.swift; sourceTree = "<group>"; };
-		E406E8FB20594256AD9445AC /* SessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionController.swift; sourceTree = "<group>"; };
-		7F50ED5955F2485DB2DC4896 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		DBA1DD1A74894409ACBCA7D3 /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
-		19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadGestureService.swift; sourceTree = "<group>"; };
 		034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPlayer.swift; sourceTree = "<group>"; };
-		138DEE481E4C4447889C0185 /* XAIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XAIClient.swift; sourceTree = "<group>"; };
-		7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokAuth.swift; sourceTree = "<group>"; };
-		9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokSignInView.swift; sourceTree = "<group>"; };
 		0C39E72E0D214863B2AA60CC /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		138DEE481E4C4447889C0185 /* XAIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XAIClient.swift; sourceTree = "<group>"; };
+		19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadGestureService.swift; sourceTree = "<group>"; };
+		460B333C321B407FAA639DFF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokAuth.swift; sourceTree = "<group>"; };
+		7F50ED5955F2485DB2DC4896 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokSignInView.swift; sourceTree = "<group>"; };
+		9F92D062869B425CA1E7A55D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B1671D423BF046569ED976D9 /* NodVoice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NodVoice.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B6257F0D4CCD49AE93A988FC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		C84456D0BEAE42DF9C27BF42 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		9F92D062869B425CA1E7A55D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		460B333C321B407FAA639DFF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D7CAD417732843C089CC9873 /* NodVoiceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodVoiceApp.swift; sourceTree = "<group>"; };
+		DBA1DD1A74894409ACBCA7D3 /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
+		E406E8FB20594256AD9445AC /* SessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,22 +51,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		9707BA3D48EB4421806AC6B1 = {
-			isa = PBXGroup;
-			children = (
-				49546719F5894F2FB8654967 /* NodVoice */,
-				721BFFE355B6496AB0C9625C /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		721BFFE355B6496AB0C9625C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				B1671D423BF046569ED976D9 /* NodVoice.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		49546719F5894F2FB8654967 /* NodVoice */ = {
 			isa = PBXGroup;
 			children = (
@@ -80,33 +65,12 @@
 			path = NodVoice;
 			sourceTree = "<group>";
 		};
-		83B53908EBC04233BEB94C5B /* App */ = {
-			isa = PBXGroup;
-			children = (
-				D7CAD417732843C089CC9873 /* NodVoiceApp.swift */,
-				E406E8FB20594256AD9445AC /* SessionController.swift */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
 		507E55FA785049339C794E81 /* Models */ = {
 			isa = PBXGroup;
 			children = (
 				7F50ED5955F2485DB2DC4896 /* Models.swift */,
 			);
 			path = Models;
-			sourceTree = "<group>";
-		};
-		EE6C8C8B39504C4A946AF5C0 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				DBA1DD1A74894409ACBCA7D3 /* AudioCaptureService.swift */,
-				19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */,
-				034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */,
-				138DEE481E4C4447889C0185 /* XAIClient.swift */,
-				7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */,
-			);
-			path = Services;
 			sourceTree = "<group>";
 		};
 		69BBC87DA9764AEBBD4F5281 /* Views */ = {
@@ -119,12 +83,49 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		721BFFE355B6496AB0C9625C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B1671D423BF046569ED976D9 /* NodVoice.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		83B53908EBC04233BEB94C5B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D7CAD417732843C089CC9873 /* NodVoiceApp.swift */,
+				E406E8FB20594256AD9445AC /* SessionController.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
 		8E2C4D0F58944545B8967DDB /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
 				0C39E72E0D214863B2AA60CC /* KeychainStore.swift */,
 			);
 			path = Utilities;
+			sourceTree = "<group>";
+		};
+		9707BA3D48EB4421806AC6B1 = {
+			isa = PBXGroup;
+			children = (
+				49546719F5894F2FB8654967 /* NodVoice */,
+				721BFFE355B6496AB0C9625C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EE6C8C8B39504C4A946AF5C0 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				DBA1DD1A74894409ACBCA7D3 /* AudioCaptureService.swift */,
+				19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */,
+				034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */,
+				138DEE481E4C4447889C0185 /* XAIClient.swift */,
+				7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -155,7 +156,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					E855D206ED964B66967E078C = {
 						CreatedOnToolsVersion = 16.0;
@@ -218,22 +219,52 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				SDKROOT = iphoneos;
 			};
 			name = Debug;
 		};
@@ -241,14 +272,43 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				MTL_ENABLE_DEBUG_INFO = NO;
-				SWIFT_COMPILATION_MODE = wholemodule;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
 		};
@@ -259,7 +319,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = W936BTJL69;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NodVoice/Info.plist;
@@ -286,7 +346,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = W936BTJL69;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NodVoice/Info.plist;
@@ -309,20 +369,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		E7C87F2B51CE4BEA9C6C9EFC /* Build configuration list for PBXProject "NodVoice" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				2494611A00094C019B792846 /* Debug */,
-				275A0B96E0E84C3CA6198D3A /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		31F86C98489D495394DCCF3D /* Build configuration list for PBXNativeTarget "NodVoice" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FB800822828434599CE6376 /* Debug */,
 				67FA9736423F4E2B9870E61A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E7C87F2B51CE4BEA9C6C9EFC /* Build configuration list for PBXProject "NodVoice" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2494611A00094C019B792846 /* Debug */,
+				275A0B96E0E84C3CA6198D3A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

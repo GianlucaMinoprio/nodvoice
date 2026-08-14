@@ -159,7 +159,7 @@ final class SessionController: ObservableObject {
     /// Offline path: fake transcript + options so you can practice nod/shake.
     private func runDemoPipeline() async {
         phase = .listening
-        debugLine = "Demo mode (no SuperGrok / API key)"
+        debugLine = "Demo mode (sign in with SuperGrok)"
         head.start()
         try? await Task.sleep(nanoseconds: 1_200_000_000)
         guard !Task.isCancelled else { return }
@@ -177,7 +177,7 @@ final class SessionController: ObservableObject {
         ]
         selectedIndex = 0
         phase = .choosing
-        debugLine = "Demo: nod = select, shake = next. TTS needs SuperGrok or API key"
+        debugLine = "Demo: nod = select, shake = next. TTS needs SuperGrok"
     }
 
     func stopAndProcess() {
@@ -296,7 +296,7 @@ final class SessionController: ObservableObject {
     private func runPipeline(fileURL: URL) async {
         defer { try? FileManager.default.removeItem(at: fileURL) }
         do {
-            let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: settings.apiKey)
+            let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: "")
             phase = .transcribing
             debugLine = "STT…"
             let text = try await client.transcribe(
@@ -344,7 +344,7 @@ final class SessionController: ObservableObject {
                 return
             }
 
-            let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: settings.apiKey)
+            let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: "")
             phase = .speaking
             debugLine = "TTS \(settings.voiceID)…"
             let audio = try await client.synthesize(
