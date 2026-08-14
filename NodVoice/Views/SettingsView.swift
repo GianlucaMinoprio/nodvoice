@@ -97,13 +97,9 @@ struct SettingsView: View {
 
                     Picker("Language", selection: $language) {
                         ForEach(languageChoices, id: \.code) { item in
-                            Text("\(item.name) (\(item.code))").tag(item.code)
+                            Text(item.name).tag(item.code)
                         }
                     }
-                    TextField("Language code", text: $language)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.body.monospaced())
 
                     Stepper(value: $optionCount, in: 2...5) {
                         Text("Reply options: \(optionCount)")
@@ -111,7 +107,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Model")
                 } footer: {
-                    Text("Pick a language or type a code (en, es, fr…).")
+                    Text("Language for Grok STT and TTS.")
                 }
 
                 Section {
