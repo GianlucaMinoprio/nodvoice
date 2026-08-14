@@ -38,8 +38,8 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     private let queue = OperationQueue()
 
     private var nodPitchThreshold = 0.18          // ~10°
-    private var shakeYawThreshold = 0.34          // ~19°, must cross both ways
-    private var gestureCooldown: TimeInterval = 0.65
+    private var shakeYawThreshold = 0.24          // ~14°, still needs both sides
+    private var gestureCooldown: TimeInterval = 0.55
     private var lastGestureAt: TimeInterval = 0
     private var lastNodAt: TimeInterval = 0
 
@@ -187,11 +187,11 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     /// A real shake is left then right (or right then left), not a glance.
     private func detectRealShake(yawDelta: Double) {
         let now = ProcessInfo.processInfo.systemUptime
-        if now - lastNodAt < 0.9 {
+        if now - lastNodAt < 0.7 {
             shakeSign = 0
             return
         }
-        if shakeSign != 0, now - shakeArmedAt > 0.85 {
+        if shakeSign != 0, now - shakeArmedAt > 1.15 {
             shakeSign = 0
         }
 
@@ -203,7 +203,8 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
             return
         }
 
-        let opposite = Double(shakeSign) * yawDelta <= -shakeYawThreshold
+        // Return swing can be smaller than the first flick.
+        let opposite = Double(shakeSign) * yawDelta <= -shakeYawThreshold * 0.55
         if opposite {
             shakeSign = 0
             yawBaseline = lastYaw
