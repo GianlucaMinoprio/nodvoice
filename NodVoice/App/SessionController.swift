@@ -171,7 +171,7 @@ final class SessionController: ObservableObject {
 
     func resetToIdle() {
         pipelineTask?.cancel()
-        capture.stop()
+        _ = capture.stop()
         player.stop()
         options = []
         selectedIndex = 0

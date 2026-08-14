@@ -10,9 +10,13 @@ final class AudioCaptureService: ObservableObject {
     private var fileURL: URL?
 
     func requestPermission() async -> Bool {
-        await withCheckedContinuation { cont in
-            AVAudioSession.sharedInstance().requestRecordPermission { allowed in
-                cont.resume(returning: allowed)
+        if #available(iOS 17.0, *) {
+            return await AVAudioApplication.requestRecordPermission()
+        } else {
+            return await withCheckedContinuation { cont in
+                AVAudioSession.sharedInstance().requestRecordPermission { allowed in
+                    cont.resume(returning: allowed)
+                }
             }
         }
     }
