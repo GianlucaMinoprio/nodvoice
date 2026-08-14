@@ -159,7 +159,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         lastRoll = roll
         sampleCount += 1
         if sampleCount == 1 { imuRestarts = 0 }
-        if sampleCount % 15 == 0 {
+        if sampleCount % 8 == 0 {
             liveLine = String(
                 format: "IMU  pitch %+.0f°  yaw %+.0f°  roll %+.0f°  n=%d",
                 pitch * 180 / .pi,

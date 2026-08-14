@@ -141,19 +141,19 @@ struct RootView: View {
                     .foregroundStyle(.orange)
             }
 
-            if session.settings.showMotionDebug, !session.head.liveLine.isEmpty {
-                Text(session.head.liveLine)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
+            // Always show IMU. Hiding it lets SwiftUI drop the subscription
+            // and the AirPods stream goes stale. When this line is on screen, nods work.
+            Text(session.head.liveLine.isEmpty ? "IMU starting…" : session.head.liveLine)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
 
-            if isGestureFlash || session.settings.showMotionDebug, !session.motionStatus.isEmpty {
+            if !session.motionStatus.isEmpty {
                 Text(session.motionStatus)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            if !session.debugLine.isEmpty, session.settings.showMotionDebug || session.phase.errorMessage != nil {
+            if !session.debugLine.isEmpty {
                 Text(session.debugLine)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
