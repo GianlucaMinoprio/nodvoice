@@ -5,6 +5,7 @@ import UIKit
 struct RootView: View {
     @EnvironmentObject private var session: SessionController
     @State private var showSettings = false
+    @State private var showSuperGrok = false
 
     var body: some View {
         NavigationStack {
@@ -100,6 +101,12 @@ struct RootView: View {
                     .environmentObject(session)
                     .presentationDetents([.medium, .large])
             }
+            .sheet(isPresented: $showSuperGrok) {
+                SuperGrokSignInView {
+                    session.refreshGrokAuth()
+                    showSuperGrok = false
+                }
+            }
             .onAppear { session.onAppear() }
             .background {
                 if session.allowsManualGestures {
@@ -116,60 +123,50 @@ struct RootView: View {
 
     private var statusSection: some View {
         Section {
-            LabeledContent {
-                Text(session.phase.shortLabel)
-                    .foregroundStyle(session.phase.tint)
-                    .fontWeight(.semibold)
+            Button {
+                if session.gate == .connectGrok { showSuperGrok = true }
             } label: {
-                Label("Status", systemImage: session.phase.symbolName)
+                LabeledContent {
+                    Text(session.statusTitle)
+                        .foregroundStyle(session.statusTint)
+                        .fontWeight(.semibold)
+                } label: {
+                    Label("Status", systemImage: session.statusSymbol)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(session.gate != .connectGrok)
+
+            if session.gate == .ready, !session.imuLine.isEmpty {
+                Text(session.imuLine)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
             }
 
-            if let errorMessage = session.phase.errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.orange)
-            }
-
-            LabeledContent("AirPods") {
-                Text(airPodsLabel)
-                    .foregroundStyle(session.canUseApp ? Color.secondary : Color.orange)
-            }
-
-            if !session.canUseApp {
-                Label("Connect AirPods to use this app on iPhone", systemImage: "airpodspro")
-                    .font(.footnote)
-                    .foregroundStyle(.orange)
-            }
-
-            // Always show IMU. Hiding it lets SwiftUI drop the subscription
-            // and the AirPods stream goes stale. When this line is on screen, nods work.
-            Text(session.imuLine.isEmpty ? session.motionStatus : session.imuLine)
-                .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
-
-            if !session.motionStatus.isEmpty {
+            if session.gate == .ready, isGestureFlash {
                 Text(session.motionStatus)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            if !session.debugLine.isEmpty {
+            if session.gate == .ready, !session.debugLine.isEmpty {
                 Text(session.debugLine)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
-
-            if !SuperGrokSession.isSignedIn {
-                Label("Demo mode. Sign in with SuperGrok in Settings.", systemImage: "info.circle")
-                    .font(.footnote)
-                    .foregroundStyle(.orange)
-            }
         } header: {
             Text("Session")
         } footer: {
-            Text(session.phase == .choosing
-                 ? "Stay on a reply. The circle fills, then it speaks."
-                 : "Shake to start. Pause to draft. Shake to stop.")
+            switch session.gate {
+            case .connectGrok:
+                Text("Sign in with SuperGrok first.")
+            case .wearAirPods:
+                Text("Put AirPods in. Status turns Ready when head tracking is live.")
+            case .ready:
+                Text(session.phase == .choosing
+                     ? "Stay on a reply. The circle fills, then it speaks."
+                     : "Shake to start. Pause to draft. Shake to stop.")
+            }
         }
     }
 

@@ -20,6 +20,8 @@ final class SessionController: ObservableObject {
     @Published var settings: AppSettings
     @Published var motionStatus: String = ""
     @Published var imuLine: String = ""
+    @Published var imuLive = false
+    @Published var grokSignedIn = SuperGrokSession.isSignedIn
     @Published var debugLine: String = ""
     @Published var dwellProgress: Double = 0
 
@@ -51,7 +53,11 @@ final class SessionController: ObservableObject {
 
         head.$liveLine
             .receive(on: RunLoop.main)
-            .assign(to: &$imuLine)
+            .sink { [weak self] line in
+                self?.imuLine = line
+                self?.imuLive = !line.isEmpty
+            }
+            .store(in: &cancellables)
 
         head.$headphonesConnected
             .receive(on: RunLoop.main)
@@ -64,16 +70,50 @@ final class SessionController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     private func handleHeadphonesChange(_ connected: Bool) {
+        if !connected { imuLive = false }
         guard !isSimulator, !connected else { return }
-        switch phase {
-        case .idle:
-            break
-        default:
-            pipelineTask?.cancel()
-            _ = capture.stop()
-            player.stop()
-            phase = .error("AirPods disconnected")
-            debugLine = "Reconnect AirPods to continue"
+        if phase != .idle {
+            endSession()
+        }
+    }
+
+    enum Gate: Equatable {
+        case connectGrok
+        case wearAirPods
+        case ready
+    }
+
+    var gate: Gate {
+        if isSimulator {
+            return grokSignedIn ? .ready : .connectGrok
+        }
+        if !grokSignedIn { return .connectGrok }
+        if !imuLive { return .wearAirPods }
+        return .ready
+    }
+
+    var statusTitle: String {
+        switch gate {
+        case .connectGrok: return "Connect Grok"
+        case .wearAirPods: return "Wear AirPods"
+        case .ready:
+            return phase == .idle ? "Ready" : phase.shortLabel
+        }
+    }
+
+    var statusSymbol: String {
+        switch gate {
+        case .connectGrok: return "person.crop.circle.badge.plus"
+        case .wearAirPods: return "airpodspro"
+        case .ready: return phase.symbolName
+        }
+    }
+
+    var statusTint: Color {
+        switch gate {
+        case .connectGrok: return .accentColor
+        case .wearAirPods: return .orange
+        case .ready: return phase == .idle ? .green : phase.tint
         }
     }
 
@@ -102,18 +142,21 @@ final class SessionController: ObservableObject {
 
     var isSimulator: Bool { DeviceEnvironment.isSimulator }
 
-    /// Real iPhone: AirPods with head tracking must be in. Simulator: always allowed.
+    /// Ready only when SuperGrok is signed in and IMU samples are flowing.
     var canUseApp: Bool {
-        isSimulator || head.headphonesConnected
+        isSimulator || (grokSignedIn && imuLive)
     }
 
     var allowsManualGestures: Bool { isSimulator }
 
     func onAppear() {
+        grokSignedIn = SuperGrokSession.isSignedIn
         head.refreshConnection()
-        if canUseApp {
-            head.start()
-        }
+        head.start()
+    }
+
+    func refreshGrokAuth() {
+        grokSignedIn = SuperGrokSession.isSignedIn
     }
 
     func onDisappear() {
@@ -125,10 +168,7 @@ final class SessionController: ObservableObject {
     }
 
     func toggleListen() {
-        guard canUseApp else {
-            phase = .error("Put AirPods in to use NodVoice")
-            return
-        }
+        guard canUseApp else { return }
         switch phase {
         case .listening:
             stopAndProcess()
@@ -150,10 +190,7 @@ final class SessionController: ObservableObject {
         debugLine = ""
         lockGestures(1.1)
 
-        guard canUseApp else {
-            phase = .error("Put AirPods in to use NodVoice")
-            return
-        }
+        guard canUseApp else { return }
         if !settings.hasLiveCredential {
             pipelineTask = Task { await runDemoPipeline() }
             return
