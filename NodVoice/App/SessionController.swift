@@ -350,10 +350,10 @@ final class SessionController: ObservableObject {
 
     private func presentDemoOptions() {
         options = [
-            ReplyOption(text: "Yeah, I'm in. Let's try a small version this week.", tone: "positive"),
-            ReplyOption(text: "Not for me. Let's skip this one.", tone: "negative"),
-            ReplyOption(text: "Maybe. I need a bit more before I decide.", tone: "neutral"),
-            ReplyOption(text: "What if we do a lighter version first?", tone: "alternative")
+            ReplyOption(text: "I like it. The core is strong, we just need to shrink the first version.", tone: "direct"),
+            ReplyOption(text: "The idea works if we pick one user and prove it this week.", tone: "brief"),
+            ReplyOption(text: "Honestly I want to see the riskiest assumption tested first.", tone: "curious"),
+            ReplyOption(text: "I'm in if we keep it small and skip the extra features.", tone: "warm")
         ]
         selectedIndex = 0
         phase = .choosing

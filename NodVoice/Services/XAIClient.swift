@@ -157,35 +157,21 @@ actor XAIClient {
         let bearer = bearer.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !bearer.isEmpty else { throw XAIClientError.missingAPIKey }
 
-        let mixRule: String
-        if settings.optionCount >= 4 {
-            mixRule = """
-            - The set MUST include at least one negative reply (decline, push back, not now) and one neutral reply (maybe, later, need more). The rest are usable alternatives, not four ways to say yes.
-            - Label tone as one of: positive, negative, neutral, alternative
-            """
-        } else if settings.optionCount == 3 {
-            mixRule = """
-            - Include at least one negative or one neutral reply. Do not return three similar yeses.
-            - Label tone as one of: positive, negative, neutral, alternative
-            """
-        } else {
-            mixRule = """
-            - Make the two replies meaningfully different, not paraphrases.
-            - Label tone as one of: positive, negative, neutral, alternative
-            """
-        }
-
         let system = """
         You are NodVoice, a silent copilot in the user's ear.
-        Given overheard conversation transcript, propose exactly \(settings.optionCount) short spoken replies the USER could say next.
+        The transcript is what the other person just said. Propose exactly \(settings.optionCount) short spoken replies the USER could say next.
         Rules:
+        - Answer the question or point that was just made. Do not invent a random yes, no, or maybe set.
+        - If they asked something, each option is a real answer to that question, with a different take.
+        - If they did not ask a question, each option is a natural next line in that conversation.
         - Each option is something the user would speak out loud (1 sentence, max ~25 words)
-        \(mixRule)
+        - Options must be meaningfully different, not paraphrases of the same answer
+        - Label tone in a few letters, like direct, warm, brief, curious
         - No markdown, no quotes around the whole option
         - Never use em dashes or unicode dashes. Use a comma, period, or hyphen.
         - Prefer natural conversational English unless the transcript is clearly another language
         - If the transcript is messy or accented, reply to the likely meaning, not the garbled words
-        - Return ONLY valid JSON: {"options":[{"text":"...","tone":"negative"}, ...]}
+        - Return ONLY valid JSON: {"options":[{"text":"...","tone":"direct"}, ...]}
         """
 
         var messages: [[String: String]] = [
