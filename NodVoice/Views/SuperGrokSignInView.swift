@@ -1,15 +1,14 @@
 import SwiftUI
 import UIKit
 
-/// Device-code SuperGrok login. Opens Safari; the app polls until you approve.
+/// SuperGrok login. Opens the approve link and polls until you finish in the browser.
 struct SuperGrokSignInView: View {
     var onFinished: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
 
     @State private var login: SuperGrokDeviceLogin?
-    @State private var status = "Starting SuperGrok sign-in…"
+    @State private var status = "Opening SuperGrok…"
     @State private var errorText: String?
     @State private var pollTask: Task<Void, Never>?
 
@@ -24,33 +23,20 @@ struct SuperGrokSignInView: View {
                     )
                     Button("Try again") { start() }
                         .buttonStyle(.borderedProminent)
-                } else if let login {
-                    Text("Enter this code on xAI")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Text(login.userCode)
-                        .font(.largeTitle.monospaced().weight(.bold))
-                        .textSelection(.enabled)
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-
-                    Button {
-                        UIPasteboard.general.string = login.userCode
-                    } label: {
-                        Label("Copy code", systemImage: "doc.on.doc")
-                    }
-
-                    Button {
-                        openURL(login.verificationURL)
-                    } label: {
-                        Label("Open xAI to approve", systemImage: "safari")
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    ProgressView(status)
-                        .padding(.top, 8)
                 } else {
+                    ContentUnavailableView(
+                        "Approve SuperGrok",
+                        systemImage: "person.crop.circle.badge.checkmark",
+                        description: Text("Finish sign-in in the browser. This screen waits for you.")
+                    )
+                    if let login {
+                        Button {
+                            UIApplication.shared.open(login.verificationURL)
+                        } label: {
+                            Label("Open SuperGrok", systemImage: "safari")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                     ProgressView(status)
                 }
 
@@ -76,7 +62,7 @@ struct SuperGrokSignInView: View {
         pollTask?.cancel()
         errorText = nil
         login = nil
-        status = "Starting SuperGrok sign-in…"
+        status = "Opening SuperGrok…"
         pollTask = Task {
             do {
                 let started = try await SuperGrokAuth.shared.startDeviceLogin()
