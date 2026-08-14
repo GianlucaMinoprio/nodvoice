@@ -19,6 +19,8 @@ final class SessionController: ObservableObject {
     @Published var settings: AppSettings
     @Published var imuLive = false
     @Published var grokSignedIn = SuperGrokSession.isSignedIn
+    @Published var grokConnecting = false
+    @Published var grokAuthError: String?
     @Published var dwellProgress: Double = 0
 
     let capture = AudioCaptureService()
@@ -30,6 +32,8 @@ final class SessionController: ObservableObject {
     private var pipelineTask: Task<Void, Never>?
     private var listenTask: Task<Void, Never>?
     private var dwellTask: Task<Void, Never>?
+    private var grokAuthTask: Task<Void, Never>?
+    private var pendingGrokURL: URL?
     private var ignoreGesturesUntil: TimeInterval = 0
     private var dwellSeconds: TimeInterval { settings.dwellSeconds }
 
@@ -81,7 +85,7 @@ final class SessionController: ObservableObject {
 
     var statusTitle: String {
         switch gate {
-        case .connectGrok: return "Connect Grok"
+        case .connectGrok: return grokConnecting ? "Connecting…" : "Connect Grok"
         case .wearAirPods: return "Wear AirPods"
         case .ready:
             return phase == .idle ? "Ready" : phase.shortLabel
@@ -144,6 +148,48 @@ final class SessionController: ObservableObject {
 
     func refreshGrokAuth() {
         grokSignedIn = SuperGrokSession.isSignedIn
+        if grokSignedIn {
+            grokConnecting = false
+            grokAuthError = nil
+        }
+    }
+
+    func connectGrok() {
+        refreshGrokAuth()
+        if grokSignedIn { return }
+        grokAuthError = nil
+        if grokConnecting {
+            if let pendingGrokURL {
+                UIApplication.shared.open(pendingGrokURL)
+            }
+            return
+        }
+        grokAuthTask?.cancel()
+        grokConnecting = true
+        grokAuthTask = Task {
+            defer {
+                if !SuperGrokSession.isSignedIn { grokConnecting = false }
+            }
+            do {
+                let started = try await SuperGrokAuth.shared.startDeviceLogin()
+                guard !Task.isCancelled else { return }
+                pendingGrokURL = started.verificationURL
+                await MainActor.run {
+                    UIApplication.shared.open(started.verificationURL)
+                }
+                try await SuperGrokAuth.shared.pollUntilAuthorized(started)
+                guard !Task.isCancelled else { return }
+                grokSignedIn = SuperGrokSession.isSignedIn
+                grokConnecting = false
+                grokAuthError = nil
+            } catch is CancellationError {
+                // ignore
+            } catch {
+                guard !Task.isCancelled else { return }
+                grokAuthError = error.localizedDescription
+                grokConnecting = false
+            }
+        }
     }
 
     func onDisappear() {

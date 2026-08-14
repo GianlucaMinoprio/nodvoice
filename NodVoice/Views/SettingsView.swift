@@ -9,8 +9,6 @@ struct SettingsView: View {
     @State private var optionCount: Int = AppSettings.defaultOptionCount
     @State private var speakerVolume: Double = AppSettings.defaultSpeakerVolume
     @State private var dwellSeconds: Double = AppSettings.defaultDwellSeconds
-    @State private var showSuperGrok = false
-    @State private var signedIn = SuperGrokSession.isSignedIn
     @State private var accountHint = SuperGrokSession.load()?.accountHint
     @State private var previewingVoice: String?
     @State private var previewError: String?
@@ -37,7 +35,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    if signedIn {
+                    if session.grokSignedIn {
                         LabeledContent("Status") {
                             Text("Signed in")
                                 .foregroundStyle(.green)
@@ -58,9 +56,13 @@ struct SettingsView: View {
                         }
                     } else {
                         Button {
-                            showSuperGrok = true
+                            session.connectGrok()
                         } label: {
-                            Label("Sign in with SuperGrok", systemImage: "person.crop.circle.badge.checkmark")
+                            if session.grokConnecting {
+                                Label("Opening SuperGrok…", systemImage: "safari")
+                            } else {
+                                Label("Sign in with SuperGrok", systemImage: "person.crop.circle.badge.checkmark")
+                            }
                         }
                     }
                 } header: {
@@ -90,7 +92,7 @@ struct SettingsView: View {
                                         .font(.title3)
                                 }
                             }
-                            .disabled(!signedIn || previewingVoice != nil)
+                            .disabled(!session.grokSignedIn || previewingVoice != nil)
                             .accessibilityLabel("Preview \(voice)")
                         }
                     }
@@ -102,7 +104,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Voice")
                 } footer: {
-                    Text(signedIn
+                    Text(session.grokSignedIn
                          ? "Tap play to hear a sample on the phone speaker."
                          : "Sign in with SuperGrok to preview voices.")
                 }
@@ -173,11 +175,6 @@ struct SettingsView: View {
             }
             .onAppear(perform: load)
             .onDisappear { session.player.stop() }
-            .sheet(isPresented: $showSuperGrok, onDismiss: refreshAuth) {
-                SuperGrokSignInView {
-                    refreshAuth()
-                }
-            }
         }
     }
 
@@ -198,7 +195,6 @@ struct SettingsView: View {
     }
 
     private func refreshAuth() {
-        signedIn = SuperGrokSession.isSignedIn
         accountHint = SuperGrokSession.load()?.accountHint
         session.refreshGrokAuth()
     }

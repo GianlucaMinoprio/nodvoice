@@ -16,7 +16,6 @@
 		914349C3ED7749919B26838F /* SpeechPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */; };
 		9A05E01FE33642488AF78430 /* NodVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CAD417732843C089CC9873 /* NodVoiceApp.swift */; };
 		9E7C55E893E14AC2987D9802 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA1DD1A74894409ACBCA7D3 /* AudioCaptureService.swift */; };
-		AD4B2F5E70127436D9E8FC34 /* SuperGrokSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */; };
 		B54213BA4A234FC998D5BEDB /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C39E72E0D214863B2AA60CC /* KeychainStore.swift */; };
 		C90BD768C70D40AB95870B8E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F92D062869B425CA1E7A55D /* Assets.xcassets */; };
 		FB72C0C078524416AF82B357 /* XAIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138DEE481E4C4447889C0185 /* XAIClient.swift */; };
@@ -30,7 +29,6 @@
 		460B333C321B407FAA639DFF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokAuth.swift; sourceTree = "<group>"; };
 		7F50ED5955F2485DB2DC4896 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokSignInView.swift; sourceTree = "<group>"; };
 		9F92D062869B425CA1E7A55D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1671D423BF046569ED976D9 /* NodVoice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NodVoice.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B6257F0D4CCD49AE93A988FC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -78,7 +76,6 @@
 			children = (
 				B6257F0D4CCD49AE93A988FC /* RootView.swift */,
 				C84456D0BEAE42DF9C27BF42 /* SettingsView.swift */,
-				9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -205,7 +202,6 @@
 				914349C3ED7749919B26838F /* SpeechPlayer.swift in Sources */,
 				FB72C0C078524416AF82B357 /* XAIClient.swift in Sources */,
 				8B2F0D3C5E905214B7C6DA12 /* SuperGrokAuth.swift in Sources */,
-				AD4B2F5E70127436D9E8FC34 /* SuperGrokSignInView.swift in Sources */,
 				B54213BA4A234FC998D5BEDB /* KeychainStore.swift in Sources */,
 				5C5428ACFBC848D38918788D /* RootView.swift in Sources */,
 				002EFB98CFD743D789F2F0CE /* SettingsView.swift in Sources */,

@@ -5,7 +5,6 @@ import UIKit
 struct RootView: View {
     @EnvironmentObject private var session: SessionController
     @State private var showSettings = false
-    @State private var showSuperGrok = false
 
     var body: some View {
         NavigationStack {
@@ -105,12 +104,6 @@ struct RootView: View {
                     .environmentObject(session)
                     .presentationDetents([.medium, .large])
             }
-            .sheet(isPresented: $showSuperGrok) {
-                SuperGrokSignInView {
-                    session.refreshGrokAuth()
-                    showSuperGrok = false
-                }
-            }
             .onAppear { session.onAppear() }
             .background {
                 if session.allowsManualGestures {
@@ -128,7 +121,7 @@ struct RootView: View {
     private var statusSection: some View {
         Section {
             Button {
-                if session.gate == .connectGrok { showSuperGrok = true }
+                if session.gate == .connectGrok { session.connectGrok() }
             } label: {
                 LabeledContent {
                     Text(session.statusTitle)
@@ -140,6 +133,12 @@ struct RootView: View {
             }
             .buttonStyle(.plain)
             .disabled(session.gate != .connectGrok)
+
+            if let grokAuthError = session.grokAuthError, session.gate == .connectGrok {
+                Text(grokAuthError)
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
 
             if let errorMessage = session.phase.errorMessage {
                 Text(errorMessage)
