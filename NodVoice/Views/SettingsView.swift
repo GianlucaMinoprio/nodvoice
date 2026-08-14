@@ -83,7 +83,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Gestures") {
+                Section {
                     LabeledContent("Nod") {
                         Text("Speak selected")
                             .foregroundStyle(.secondary)
@@ -92,6 +92,8 @@ struct SettingsView: View {
                         Text("Next reply")
                             .foregroundStyle(.secondary)
                     }
+                } header: {
+                    Text("Gestures")
                 } footer: {
                     Text("Needs AirPods with head tracking, in-ear, on a physical iPhone.")
                 }
