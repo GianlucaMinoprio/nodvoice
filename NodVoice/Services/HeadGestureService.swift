@@ -1,6 +1,7 @@
 import Combine
 import CoreMotion
 import Foundation
+import os
 
 enum DeviceEnvironment {
     static var isSimulator: Bool {
@@ -33,6 +34,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     @Published var lastGesture: Gesture?
 
     let gestureSubject = PassthroughSubject<Gesture, Never>()
+    private let log = Logger(subsystem: "com.gianlucaminoprio.nodvoice", category: "imu")
 
     private let manager = CMHeadphoneMotionManager()
     private let queue = OperationQueue()
@@ -143,7 +145,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         lastYaw = yaw
         lastRoll = roll
         sampleCount += 1
-        if sampleCount % 8 == 0 {
+        if sampleCount % 15 == 0 {
             liveLine = String(
                 format: "IMU  pitch %+.0f°  yaw %+.0f°  roll %+.0f°  n=%d",
                 pitch * 180 / .pi,
@@ -151,6 +153,9 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
                 roll * 180 / .pi,
                 sampleCount
             )
+            if sampleCount % 45 == 0 {
+                log.info("imu pitch=\(pitch, format: .fixed(precision: 2)) yaw=\(yaw, format: .fixed(precision: 2)) n=\(self.sampleCount)")
+            }
         }
 
         if pitchBaseline == nil { pitchBaseline = pitch }
@@ -222,6 +227,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         case .nodUp: statusText = "Nod up"
         case .shake: statusText = "Shake"
         }
+        log.info("gesture \(gesture.rawValue, privacy: .public)")
         gestureSubject.send(gesture)
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 700_000_000)

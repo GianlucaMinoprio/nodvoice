@@ -39,7 +39,7 @@ struct AppSettings: Equatable {
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
             optionCount: max(2, min(5, countRaw ?? defaultOptionCount)),
             speakerVolume: min(1, max(0.2, volumeRaw ?? defaultSpeakerVolume)),
-            showMotionDebug: KeychainStore.get(account: motionDebugAccount) == "1"
+            showMotionDebug: true
         )
     }
 

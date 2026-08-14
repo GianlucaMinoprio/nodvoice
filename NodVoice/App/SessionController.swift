@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import os
 import SwiftUI
 import UIKit
 
@@ -32,6 +33,7 @@ final class SessionController: ObservableObject {
     private var dwellTask: Task<Void, Never>?
     private var ignoreGesturesUntil: TimeInterval = 0
     private let dwellSeconds: TimeInterval = 2.5
+    private let log = Logger(subsystem: "com.gianlucaminoprio.nodvoice", category: "session")
 
     init() {
         settings = AppSettings.load()
@@ -287,7 +289,11 @@ final class SessionController: ObservableObject {
 
     private func handle(gesture: HeadGestureService.Gesture) {
         let now = ProcessInfo.processInfo.systemUptime
-        guard now >= ignoreGesturesUntil else { return }
+        if now < ignoreGesturesUntil {
+            log.info("ignore \(gesture.rawValue, privacy: .public) lockout phase=\(String(describing: self.phase), privacy: .public)")
+            return
+        }
+        log.info("handle \(gesture.rawValue, privacy: .public) phase=\(String(describing: self.phase), privacy: .public)")
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         switch gesture {
         case .shake:
