@@ -241,6 +241,30 @@ final class SessionController: ObservableObject {
         head.emitManual(.shake)
     }
 
+    /// Simulator / `simctl openurl` hooks: nodvoice://listen|stop|nod|shake|reset
+    func handleOpenURL(_ url: URL) {
+        guard url.scheme?.lowercased() == "nodvoice" else { return }
+        let action = (url.host ?? url.path).trimmingCharacters(in: CharacterSet(charactersIn: "/")).lowercased()
+        switch action {
+        case "listen":
+            if phase == .listening {
+                stopAndProcess()
+            } else {
+                startListening()
+            }
+        case "stop":
+            if phase == .listening { stopAndProcess() }
+        case "nod":
+            simulateNod()
+        case "shake":
+            simulateShake()
+        case "reset":
+            resetToIdle()
+        default:
+            debugLine = "Unknown URL \(url.absoluteString)"
+        }
+    }
+
     func resetToIdle() {
         pipelineTask?.cancel()
         _ = capture.stop()

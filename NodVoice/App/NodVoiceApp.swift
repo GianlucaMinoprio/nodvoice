@@ -8,6 +8,7 @@ struct NodVoiceApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(session)
+                .onOpenURL { session.handleOpenURL($0) }
         }
     }
 }
