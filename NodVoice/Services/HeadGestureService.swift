@@ -26,6 +26,9 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     @Published private(set) var isRunning = false
     @Published private(set) var lastPitch: Double = 0
     @Published private(set) var lastYaw: Double = 0
+    @Published private(set) var lastRoll: Double = 0
+    @Published private(set) var sampleCount: Int = 0
+    @Published private(set) var liveLine = ""
     @Published private(set) var statusText = "AirPods motion: off"
     @Published var lastGesture: Gesture?
 
@@ -35,11 +38,15 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     private let manager = CMHeadphoneMotionManager()
     private let queue = OperationQueue()
 
-    // Tunables — start permissive, tighten on device.
-    private var nodPitchThreshold = 0.28          // radians ~16°
-    private var shakeYawThreshold = 0.35          // radians ~20°
-    private var gestureCooldown: TimeInterval = 0.85
+    // Tunables — loose enough for a casual AirPods nod.
+    private var nodPitchThreshold = 0.16          // radians ~9°
+    private var shakeYawThreshold = 0.20          // radians ~11°
+    private var gestureCooldown: TimeInterval = 0.7
     private var lastGestureAt: TimeInterval = 0
+    private var pitchHistory: [(t: TimeInterval, v: Double)] = []
+    private var yawHistory: [(t: TimeInterval, v: Double)] = []
+    private var rollHistory: [(t: TimeInterval, v: Double)] = []
+    private let historyWindow: TimeInterval = 0.55
 
     private var pitchBaseline: Double?
     private var yawBaseline: Double?
@@ -124,6 +131,12 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         }
         isRunning = true
         statusText = "AirPods motion: tracking"
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if self.isRunning, self.sampleCount == 0 {
+                self.statusText = "AirPods in, but no IMU yet. Reseat buds. Needs AirPods Pro / Max with head tracking."
+            }
+        }
     }
 
     func stop() {
@@ -134,24 +147,64 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     }
 
     private func ingest(_ motion: CMDeviceMotion) {
-        // attitude: pitch = nod axis, yaw = shake axis (headphone frame)
+        // Headphone frame: pitch/roll = nod, yaw = shake
         let pitch = motion.attitude.pitch
         let yaw = motion.attitude.yaw
+        let roll = motion.attitude.roll
         lastPitch = pitch
         lastYaw = yaw
+        lastRoll = roll
+        sampleCount += 1
+        if sampleCount == 1 {
+            statusText = "IMU live — nod to pick, shake to cycle"
+        }
+        if sampleCount % 8 == 0 {
+            liveLine = String(
+                format: "IMU  pitch %+.0f°  yaw %+.0f°  roll %+.0f°  n=%d",
+                pitch * 180 / .pi,
+                yaw * 180 / .pi,
+                roll * 180 / .pi,
+                sampleCount
+            )
+        }
 
-        if pitchBaseline == nil { pitchBaseline = pitch }
-        if yawBaseline == nil { yawBaseline = yaw }
+        let now = ProcessInfo.processInfo.systemUptime
+        pitchHistory.append((now, pitch))
+        yawHistory.append((now, yaw))
+        rollHistory.append((now, roll))
+        pitchHistory.removeAll { now - $0.t > historyWindow }
+        yawHistory.removeAll { now - $0.t > historyWindow }
+        rollHistory.removeAll { now - $0.t > historyWindow }
 
-        let pitchDelta = angleDifference(pitch, pitchBaseline ?? pitch)
-        let yawDelta = angleDifference(yaw, yawBaseline ?? yaw)
+        detectWindowedNod()
+        detectWindowedShake()
+    }
 
-        // Slow baseline drift so resting pose doesn't stick forever
-        pitchBaseline = interpolateAngle(from: pitchBaseline ?? pitch, to: pitch, amount: 0.02)
-        yawBaseline = interpolateAngle(from: yawBaseline ?? yaw, to: yaw, amount: 0.02)
+    private func detectWindowedNod() {
+        let pitchRange = windowRange(pitchHistory)
+        let rollRange = windowRange(rollHistory)
+        guard pitchRange >= nodPitchThreshold || rollRange >= nodPitchThreshold else { return }
+        pitchHistory.removeAll()
+        rollHistory.removeAll()
+        emit(.nod)
+    }
 
-        detectNod(pitchDelta: pitchDelta)
-        detectShake(yawDelta: yawDelta)
+    private func detectWindowedShake() {
+        guard yawHistory.count >= 6 else { return }
+        let origin = yawHistory[0].v
+        let deltas = yawHistory.map { angleDifference($0.v, origin) }
+        guard let lo = deltas.min(), let hi = deltas.max() else { return }
+        guard (hi - lo) >= shakeYawThreshold else { return }
+        yawHistory.removeAll()
+        emit(.shake)
+    }
+
+    private func windowRange(_ samples: [(t: TimeInterval, v: Double)]) -> Double {
+        guard samples.count >= 6 else { return 0 }
+        let origin = samples[0].v
+        let deltas = samples.map { angleDifference($0.v, origin) }
+        guard let lo = deltas.min(), let hi = deltas.max() else { return 0 }
+        return hi - lo
     }
 
     private func detectNod(pitchDelta: Double) {
@@ -263,6 +316,11 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         yawExtremum = 0
         trackingPitchSwing = false
         trackingYawSwing = false
+        pitchHistory.removeAll()
+        yawHistory.removeAll()
+        rollHistory.removeAll()
+        sampleCount = 0
+        liveLine = ""
     }
 
     private func angleDifference(_ angle: Double, _ reference: Double) -> Double {

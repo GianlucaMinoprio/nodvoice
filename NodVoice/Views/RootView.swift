@@ -133,6 +133,12 @@ struct RootView: View {
                     .foregroundStyle(.orange)
             }
 
+            if !session.head.liveLine.isEmpty {
+                Text(session.head.liveLine)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+
             if !session.motionStatus.isEmpty {
                 Text(session.motionStatus)
                     .font(.footnote)

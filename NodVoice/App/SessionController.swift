@@ -278,7 +278,11 @@ final class SessionController: ObservableObject {
     // MARK: - Gestures
 
     private func handle(gesture: HeadGestureService.Gesture) {
-        guard phase == .choosing else { return }
+        if phase != .choosing {
+            debugLine = "Got \(gesture.rawValue) — wait for replies, then nod"
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            return
+        }
         switch gesture {
         case .nod:
             confirmSelection()
