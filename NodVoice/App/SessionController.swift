@@ -31,7 +31,7 @@ final class SessionController: ObservableObject {
     private var listenTask: Task<Void, Never>?
     private var dwellTask: Task<Void, Never>?
     private var ignoreGesturesUntil: TimeInterval = 0
-    private let dwellSeconds: TimeInterval = 3.0
+    private let dwellSeconds: TimeInterval = 2.5
 
     init() {
         settings = AppSettings.load()
@@ -337,7 +337,7 @@ final class SessionController: ObservableObject {
         ]
         selectedIndex = 0
         phase = .choosing
-        debugLine = "Hold on a reply for 3s to speak"
+        debugLine = "Hold on a reply for 2.5s to speak"
         lockGestures(0.5)
         restartDwell()
     }
@@ -508,7 +508,7 @@ final class SessionController: ObservableObject {
             options = replies
             selectedIndex = 0
             phase = .choosing
-            debugLine = "Hold on a reply for 3s to speak"
+            debugLine = "Hold on a reply for 2.5s to speak"
             lockGestures(0.6)
             restartDwell()
             UINotificationFeedbackGenerator().notificationOccurred(.success)
