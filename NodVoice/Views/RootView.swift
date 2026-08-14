@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Main screen — intentionally boring iOS: List + Sections + system controls.
 struct RootView: View {
@@ -34,15 +35,29 @@ struct RootView: View {
 
                     if session.phase == .choosing {
                         Spacer()
-                        Button {
-                            session.cycleOption()
-                        } label: {
-                            Label("Next", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                        Button {
-                            session.confirmSelection()
-                        } label: {
-                            Label("Speak", systemImage: "speaker.wave.2.fill")
+                        if session.allowsManualGestures {
+                            Button {
+                                session.simulateShake()
+                            } label: {
+                                Label("Shake", systemImage: "arrow.left.and.right")
+                            }
+                            Button {
+                                session.simulateNod()
+                            } label: {
+                                Label("Nod", systemImage: "checkmark.circle.fill")
+                            }
+                            .buttonStyle(.borderedProminent)
+                        } else {
+                            Button {
+                                session.cycleOption()
+                            } label: {
+                                Label("Next", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            Button {
+                                session.confirmSelection()
+                            } label: {
+                                Label("Speak", systemImage: "speaker.wave.2.fill")
+                            }
                         }
                     } else {
                         Spacer()
@@ -58,7 +73,7 @@ struct RootView: View {
                                 )
                             }
                         }
-                        .disabled(session.isBusy)
+                        .disabled(session.isBusy || !session.canUseApp)
                         .tint(session.phase == .listening ? .red : .accentColor)
                     }
                 }
@@ -76,6 +91,16 @@ struct RootView: View {
                     .presentationDetents([.medium, .large])
             }
             .onAppear { session.onAppear() }
+            .background {
+                if session.allowsManualGestures {
+                    ShakeCatcher {
+                        if session.phase == .choosing {
+                            session.simulateShake()
+                        }
+                    }
+                    .frame(width: 0, height: 0)
+                }
+            }
         }
     }
 
@@ -98,8 +123,14 @@ struct RootView: View {
             }
 
             LabeledContent("AirPods") {
-                Text(session.head.isAvailable ? (session.head.isRunning ? "Tracking" : "Ready") : "Unavailable")
-                    .foregroundStyle(.secondary)
+                Text(airPodsLabel)
+                    .foregroundStyle(session.canUseApp ? Color.secondary : Color.orange)
+            }
+
+            if !session.canUseApp {
+                Label("Connect AirPods to use this app on iPhone", systemImage: "airpodspro")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
             }
 
             if !session.motionStatus.isEmpty {
@@ -122,8 +153,20 @@ struct RootView: View {
         } header: {
             Text("Session")
         } footer: {
-            Text("Nod to speak the selected reply. Shake to move to the next one.")
+            if session.allowsManualGestures {
+                Text("Simulator: tap Shake to cycle, Nod to speak. Device shake also cycles.")
+            } else {
+                Text("Nod to speak the selected reply. Shake to move to the next one. AirPods required.")
+            }
         }
+    }
+
+    private var airPodsLabel: String {
+        if session.isSimulator { return "Simulator" }
+        if session.head.headphonesConnected {
+            return session.head.isRunning ? "Tracking" : "Connected"
+        }
+        return "Not connected"
     }
 
     private var transcriptSection: some View {
@@ -182,7 +225,9 @@ struct RootView: View {
             } header: {
                 Text("Replies")
             } footer: {
-                Text("Shake cycles selection. Nod confirms and speaks.")
+                Text(session.allowsManualGestures
+                     ? "Tap Shake to cycle. Tap Nod to speak."
+                     : "Shake cycles selection. Nod confirms and speaks.")
             }
         }
     }
@@ -213,4 +258,36 @@ struct RootView: View {
 #Preview {
     RootView()
         .environmentObject(SessionController())
+}
+
+/// Simulator Hardware → Shake (or shake a device) cycles replies.
+private struct ShakeCatcher: UIViewControllerRepresentable {
+    var onShake: () -> Void
+
+    func makeUIViewController(context: Context) -> ShakeViewController {
+        let controller = ShakeViewController()
+        controller.onShake = onShake
+        return controller
+    }
+
+    func updateUIViewController(_ controller: ShakeViewController, context: Context) {
+        controller.onShake = onShake
+    }
+}
+
+private final class ShakeViewController: UIViewController {
+    var onShake: (() -> Void)?
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        becomeFirstResponder()
+    }
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake {
+            onShake?()
+        }
+    }
 }

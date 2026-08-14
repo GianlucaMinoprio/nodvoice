@@ -2,16 +2,27 @@ import Combine
 import CoreMotion
 import Foundation
 
+enum DeviceEnvironment {
+    static var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        true
+        #else
+        false
+        #endif
+    }
+}
+
 /// Detects nod (yes) and shake (no) from AirPods / headphone IMU via CMHeadphoneMotionManager.
-/// This is the entire "brain sensing" stack. It's an IMU. That's the bit.
+/// Simulator has no IMU: callers use `emitManual`.
 @MainActor
-final class HeadGestureService: ObservableObject {
+final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionManagerDelegate {
     enum Gesture: String {
         case nod
         case shake
     }
 
     @Published private(set) var isAvailable = false
+    @Published private(set) var headphonesConnected = false
     @Published private(set) var isRunning = false
     @Published private(set) var lastPitch: Double = 0
     @Published private(set) var lastYaw: Double = 0
@@ -40,24 +51,59 @@ final class HeadGestureService: ObservableObject {
     private var yawSwingStartedAt: TimeInterval = 0
     private let swingTimeout: TimeInterval = 1.25
 
-    init() {
+    override init() {
+        super.init()
         queue.name = "nodvoice.headmotion"
         queue.maxConcurrentOperationCount = 1
-        isAvailable = manager.isDeviceMotionAvailable
-        statusText = isAvailable
-            ? "AirPods motion: ready (put buds in)"
-            : "AirPods motion unavailable on this device"
+        manager.delegate = self
+        refreshConnection()
+    }
+
+    func refreshConnection() {
+        if DeviceEnvironment.isSimulator {
+            headphonesConnected = false
+            isAvailable = false
+            statusText = "Simulator: tap Nod / Shake (no AirPods IMU)"
+            return
+        }
+        let connected = manager.isDeviceMotionAvailable
+        headphonesConnected = connected
+        isAvailable = connected
+        if !connected {
+            isRunning = false
+            statusText = "Put AirPods in to use NodVoice"
+        } else if isRunning {
+            statusText = "AirPods motion: tracking"
+        } else {
+            statusText = "AirPods connected"
+        }
+    }
+
+    func headphoneMotionManagerDidConnect(_ manager: CMHeadphoneMotionManager) {
+        refreshConnection()
+        if headphonesConnected, !isRunning {
+            start()
+        }
+    }
+
+    func headphoneMotionManagerDidDisconnect(_ manager: CMHeadphoneMotionManager) {
+        stop()
+        refreshConnection()
     }
 
     func start() {
+        refreshConnection()
+        guard !DeviceEnvironment.isSimulator else { return }
         guard manager.isDeviceMotionAvailable else {
             isAvailable = false
+            headphonesConnected = false
             isRunning = false
-            statusText = "No headphone motion API on this hardware"
+            statusText = "Put AirPods in to use NodVoice"
             return
         }
         guard !isRunning else { return }
         isAvailable = true
+        headphonesConnected = true
         resetTracking()
 
         manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, error in
@@ -84,7 +130,7 @@ final class HeadGestureService: ObservableObject {
         manager.stopDeviceMotionUpdates()
         isRunning = false
         resetTracking()
-        statusText = "AirPods motion: off"
+        refreshConnection()
     }
 
     private func ingest(_ motion: CMDeviceMotion) {
@@ -196,9 +242,18 @@ final class HeadGestureService: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 700_000_000)
             if self.lastGesture == gesture {
-                self.statusText = self.isRunning ? "AirPods motion: tracking" : "AirPods motion: off"
+                self.refreshConnection()
+                if self.isRunning {
+                    self.statusText = "AirPods motion: tracking"
+                }
             }
         }
+    }
+
+    /// Simulator / UI stand-in for a real nod or shake.
+    func emitManual(_ gesture: Gesture) {
+        lastGestureAt = 0
+        emit(gesture)
     }
 
     private func resetTracking() {

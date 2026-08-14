@@ -33,6 +33,29 @@ final class SessionController: ObservableObject {
         head.$statusText
             .receive(on: RunLoop.main)
             .assign(to: &$motionStatus)
+
+        head.$headphonesConnected
+            .receive(on: RunLoop.main)
+            .sink { [weak self] connected in
+                self?.handleHeadphonesChange(connected)
+            }
+            .store(in: &cancellables)
+    }
+
+    private var cancellables = Set<AnyCancellable>()
+
+    private func handleHeadphonesChange(_ connected: Bool) {
+        guard !isSimulator, !connected else { return }
+        switch phase {
+        case .idle:
+            break
+        default:
+            pipelineTask?.cancel()
+            _ = capture.stop()
+            player.stop()
+            phase = .error("AirPods disconnected")
+            debugLine = "Reconnect AirPods to continue"
+        }
     }
 
     var selectedOption: ReplyOption? {
@@ -58,8 +81,20 @@ final class SessionController: ObservableObject {
         }
     }
 
+    var isSimulator: Bool { DeviceEnvironment.isSimulator }
+
+    /// Real iPhone: AirPods with head tracking must be in. Simulator: always allowed.
+    var canUseApp: Bool {
+        isSimulator || head.headphonesConnected
+    }
+
+    var allowsManualGestures: Bool { isSimulator }
+
     func onAppear() {
-        head.start()
+        head.refreshConnection()
+        if canUseApp {
+            head.start()
+        }
     }
 
     func onDisappear() {
@@ -71,6 +106,10 @@ final class SessionController: ObservableObject {
     }
 
     func toggleListen() {
+        guard canUseApp else {
+            phase = .error("Put AirPods in to use NodVoice")
+            return
+        }
         switch phase {
         case .listening:
             stopAndProcess()
@@ -89,6 +128,10 @@ final class SessionController: ObservableObject {
         transcript = ""
         debugLine = ""
 
+        guard canUseApp else {
+            phase = .error("Put AirPods in to use NodVoice")
+            return
+        }
         // No live credential → local demo so UI + nod gestures still work offline
         if !settings.hasLiveCredential {
             pipelineTask = Task { await runDemoPipeline() }
@@ -188,6 +231,14 @@ final class SessionController: ObservableObject {
         pipelineTask = Task {
             await speak(option: option)
         }
+    }
+
+    func simulateNod() {
+        head.emitManual(.nod)
+    }
+
+    func simulateShake() {
+        head.emitManual(.shake)
     }
 
     func resetToIdle() {
