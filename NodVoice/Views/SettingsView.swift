@@ -14,8 +14,8 @@ struct SettingsView: View {
 
     private let modelChoices = [
         "grok-4.5",
-        "grok-4.6",
-        "grok-4-1-fast-non-reasoning"
+        "grok-4-1-fast-non-reasoning",
+        "grok-4.6"
     ]
 
     private let voiceChoices = ["eve", "ara", "rex", "sal", "leo", "ursa"]

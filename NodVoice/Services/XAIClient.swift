@@ -13,7 +13,7 @@ struct AppSettings: Equatable {
     static let optionCountAccount = "option_count"
 
     /// Default chat model for multi-reply generation.
-    static let defaultChatModel = "grok-4.6"
+    static let defaultChatModel = "grok-4.5"
     static let defaultVoice = "eve"
     static let defaultLanguage = "en"
     static let defaultOptionCount = 3
@@ -25,8 +25,10 @@ struct AppSettings: Equatable {
     static func load() -> AppSettings {
         KeychainStore.delete(account: apiKeyAccount)
         let countRaw = KeychainStore.get(account: optionCountAccount).flatMap(Int.init)
+        var model = KeychainStore.get(account: modelAccount) ?? defaultChatModel
+        if model == "grok-4.6" { model = defaultChatModel }
         return AppSettings(
-            chatModel: KeychainStore.get(account: modelAccount) ?? defaultChatModel,
+            chatModel: model,
             voiceID: KeychainStore.get(account: voiceAccount) ?? defaultVoice,
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
             optionCount: max(2, min(5, countRaw ?? defaultOptionCount))
@@ -166,13 +168,17 @@ actor XAIClient {
             "content": "Latest transcript to answer:\n\(transcript)"
         ])
 
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "model": settings.chatModel,
-            "temperature": 0.7,
-            "max_tokens": 400,
+            "temperature": 0.4,
+            "max_tokens": 280,
             "response_format": ["type": "json_object"],
             "messages": messages
         ]
+        // grok-4.5 cannot turn reasoning off; low is the fastest allowed.
+        if !settings.chatModel.contains("non-reasoning") {
+            payload["reasoning_effort"] = "low"
+        }
 
         var request = URLRequest(url: baseURL.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"
