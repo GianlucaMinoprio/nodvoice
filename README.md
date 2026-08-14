@@ -17,16 +17,17 @@ No brain-sensing. Just `CMHeadphoneMotionManager`, vibecoded.
 2. **STT** — Grok Speech-to-Text (`POST /v1/stt`)
 3. **Think** — Grok 4.5 returns 3 short reply options as JSON (fast)
 4. **Nod** — AirPods head tracking:
-   - **Nod yes** (pitch down-up) → select highlighted option
-   - **Shake no** (yaw left-right) → cycle to next option
-5. **Speak** — Grok TTS (`POST /v1/tts`, voice `eve` by default) plays the answer
+   - **Nod down** → next reply
+   - **Nod up** → previous reply
+   - **Shake** → speak the highlighted option out the **iPhone speaker**
+5. **Speak** — Grok TTS (`POST /v1/tts`, voice `eve` by default) plays from the phone speaker, not the AirPods
 
 ## Requirements
 
 - Mac with **Xcode 16+**
 - iPhone on **iOS 17+** (physical device recommended)
 - **AirPods Pro** (2/3) or any buds with spatial audio / head tracking
-- [xAI](https://console.x.ai/) **SuperGrok / X Premium+** (Sign in in Settings) **or** an API key with chat + voice (STT/TTS)
+- [xAI](https://console.x.ai/) **SuperGrok / X Premium+** (Sign in in Settings). No API key.
 
 Simulator cannot stream real headphone motion. Use a device.
 
@@ -40,9 +41,9 @@ open NodVoice.xcodeproj
 
 1. Select your **Team** under Signing & Capabilities
 2. Build to your iPhone
-3. Open the app → **Settings** → **Sign in with SuperGrok** (or paste an API key)
+3. Open the app → **Settings** → **Sign in with SuperGrok**
 4. Put AirPods in, grant mic permission
-5. Tap **Listen**, talk, stop → wait for options → nod
+5. **Nod to listen** (or tap Listen), talk, nod again to stop → wait for options → nod down/up to pick → shake to speak
 
 ### Optional: env-style local override
 
@@ -78,9 +79,9 @@ NodVoice/
 | Chat | `POST https://api.x.ai/v1/chat/completions` | model `grok-4.6` (override in Settings) |
 | TTS | `POST https://api.x.ai/v1/tts` | JSON `{ text, voice_id, language }` → raw mp3 |
 
-Default chat model is **`grok-4.6`**. Swap to `grok-4.5` or `grok-4-1-fast-non-reasoning` in Settings if you want cheaper/faster options.
+Default chat model is **`grok-4.5`** with `reasoning_effort: low`. Swap to `grok-4-1-fast-non-reasoning` or `grok-4.6` in Settings.
 
-Without SuperGrok sign-in or an API key the app runs a **demo loop** so nod/shake UI still works offline.
+Without SuperGrok sign-in the app runs a **demo loop** so nod/shake UI still works offline.
 
 ### SuperGrok OAuth (mobile)
 
@@ -88,7 +89,7 @@ Settings → **Sign in with SuperGrok** starts xAI **device-code** OAuth (same f
 
 - Uses your grok.com / X Premium+ quota. No pasted API key.
 - Access tokens refresh automatically.
-- Some SuperGrok tiers still get HTTP 403 on the OAuth API surface. If that happens, paste a console API key as fallback.
+- Some SuperGrok tiers still get HTTP 403 on audio. That's a product gap, not a reason to paste a console key.
 
 Official xAI mobile guidance for shipping apps is still [ephemeral tokens](https://docs.x.ai/developers/model-capabilities/audio/ephemeral-tokens) in front of a backend key. SuperGrok OAuth is the personal-demo path.
 
@@ -96,7 +97,9 @@ Official xAI mobile guidance for shipping apps is still [ephemeral tokens](https
 
 Uses headphone device motion attitude (pitch / yaw). A simple peak detector with cooldown:
 
-- Pitch velocity spike + recovery → **nod**
+- Pitch down past ~9° then return to center → **nod down** (next / start listen)
+- Pitch up past ~9° then return → **nod up** (previous / start listen)
+- Yaw left-right → **shake** (speak selected)
 - Yaw oscillation → **shake**
 
 Thresholds live in `HeadGestureService` and are tunable.

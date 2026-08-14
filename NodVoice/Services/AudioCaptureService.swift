@@ -26,8 +26,8 @@ final class AudioCaptureService: ObservableObject {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(
             .playAndRecord,
-            mode: .spokenAudio,
-            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+            mode: .default,
+            options: [.defaultToSpeaker]
         )
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 

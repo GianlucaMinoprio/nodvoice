@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import UIKit
 
 @MainActor
 final class SessionController: ObservableObject {
@@ -177,7 +178,7 @@ final class SessionController: ObservableObject {
         ]
         selectedIndex = 0
         phase = .choosing
-        debugLine = "Demo: nod = select, shake = next. TTS needs SuperGrok"
+        debugLine = "Demo: nod down/up = pick, shake = speak. TTS needs SuperGrok"
     }
 
     func stopAndProcess() {
@@ -199,7 +200,7 @@ final class SessionController: ObservableObject {
                 ]
                 selectedIndex = 0
                 phase = .choosing
-                debugLine = "Demo: nod = select, shake = next"
+                debugLine = "Demo: nod down/up = pick, shake = speak"
             }
             return
         }
@@ -233,15 +234,19 @@ final class SessionController: ObservableObject {
         }
     }
 
-    func simulateNod() {
-        head.emitManual(.nod)
+    func simulateNodDown() {
+        head.emitManual(.nodDown)
+    }
+
+    func simulateNodUp() {
+        head.emitManual(.nodUp)
     }
 
     func simulateShake() {
         head.emitManual(.shake)
     }
 
-    /// Simulator / `simctl openurl` hooks: nodvoice://listen|stop|nod|shake|reset
+    /// Simulator / `simctl openurl` hooks: nodvoice://listen|stop|nod|nod-up|nod-down|shake|reset
     func handleOpenURL(_ url: URL) {
         guard url.scheme?.lowercased() == "nodvoice" else { return }
         let action = (url.host ?? url.path).trimmingCharacters(in: CharacterSet(charactersIn: "/")).lowercased()
@@ -254,8 +259,10 @@ final class SessionController: ObservableObject {
             }
         case "stop":
             if phase == .listening { stopAndProcess() }
-        case "nod":
-            simulateNod()
+        case "nod", "nod-down", "noddown":
+            simulateNodDown()
+        case "nod-up", "nodup":
+            simulateNodUp()
         case "shake":
             simulateShake()
         case "reset":
@@ -278,16 +285,47 @@ final class SessionController: ObservableObject {
     // MARK: - Gestures
 
     private func handle(gesture: HeadGestureService.Gesture) {
-        if phase != .choosing {
-            debugLine = "Got \(gesture.rawValue) — wait for replies, then nod"
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            return
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        switch phase {
+        case .idle, .error:
+            startListening()
+            debugLine = "Hands-free listen"
+        case .listening:
+            stopAndProcess()
+        case .choosing:
+            switch gesture {
+            case .nodDown:
+                cycleOption(forward: true)
+                announceSelection()
+            case .nodUp:
+                cycleOption(forward: false)
+                announceSelection()
+            case .shake:
+                confirmSelection()
+            }
+        case .speaking:
+            player.stop()
+            phase = .idle
+            debugLine = "Stopped voice. Nod to listen again."
+        case .transcribing, .thinking:
+            debugLine = "Got \(label(for: gesture)), wait for replies"
         }
+    }
+
+    private func announceSelection() {
+        guard let option = selectedOption else { return }
+        debugLine = "Reply \(selectedIndex + 1) of \(options.count)"
+        UIAccessibility.post(
+            notification: .announcement,
+            argument: "Reply \(selectedIndex + 1). \(option.text)"
+        )
+    }
+
+    private func label(for gesture: HeadGestureService.Gesture) -> String {
         switch gesture {
-        case .nod:
-            confirmSelection()
-        case .shake:
-            cycleOption(forward: true)
+        case .nodDown: return "nod down"
+        case .nodUp: return "nod up"
+        case .shake: return "shake"
         }
     }
 
@@ -320,7 +358,7 @@ final class SessionController: ObservableObject {
             options = replies
             selectedIndex = 0
             phase = .choosing
-            debugLine = "Nod = speak · shake = next"
+            debugLine = "Nod down/up = pick · shake = speak"
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         } catch is CancellationError {
             // ignore
@@ -362,7 +400,7 @@ final class SessionController: ObservableObject {
             history.insert(turn, at: 0)
             if history.count > 20 { history = Array(history.prefix(20)) }
             phase = .idle
-            debugLine = "Done"
+            debugLine = "Done. Nod to listen again."
             options = []
         } catch is CancellationError {
             // ignore

@@ -37,21 +37,31 @@ struct RootView: View {
                         Spacer()
                         if session.allowsManualGestures {
                             Button {
-                                session.simulateShake()
+                                session.simulateNodUp()
                             } label: {
-                                Label("Shake", systemImage: "arrow.left.and.right")
+                                Label("Up", systemImage: "arrow.up")
                             }
                             Button {
-                                session.simulateNod()
+                                session.simulateNodDown()
                             } label: {
-                                Label("Nod", systemImage: "checkmark.circle.fill")
+                                Label("Down", systemImage: "arrow.down")
+                            }
+                            Button {
+                                session.simulateShake()
+                            } label: {
+                                Label("Speak", systemImage: "checkmark.circle.fill")
                             }
                             .buttonStyle(.borderedProminent)
                         } else {
                             Button {
-                                session.cycleOption()
+                                session.cycleOption(forward: false)
                             } label: {
-                                Label("Next", systemImage: "arrow.triangle.2.circlepath")
+                                Label("Up", systemImage: "arrow.up")
+                            }
+                            Button {
+                                session.cycleOption(forward: true)
+                            } label: {
+                                Label("Down", systemImage: "arrow.down")
                             }
                             Button {
                                 session.confirmSelection()
@@ -94,9 +104,7 @@ struct RootView: View {
             .background {
                 if session.allowsManualGestures {
                     ShakeCatcher {
-                        if session.phase == .choosing {
-                            session.simulateShake()
-                        }
+                        session.simulateShake()
                     }
                     .frame(width: 0, height: 0)
                 }
@@ -160,9 +168,9 @@ struct RootView: View {
             Text("Session")
         } footer: {
             if session.allowsManualGestures {
-                Text("Simulator: tap Shake to cycle, Nod to speak. Device shake also cycles.")
+                Text("Simulator: nod to listen. Up/down picks a reply. Shake speaks it.")
             } else {
-                Text("Nod to speak the selected reply. Shake to move to the next one. AirPods required.")
+                Text("Nod to start or stop listen. Nod down = next reply, nod up = previous. Shake speaks it out the phone speaker.")
             }
         }
     }
@@ -181,7 +189,7 @@ struct RootView: View {
                 ContentUnavailableView(
                     "Nothing heard yet",
                     systemImage: "ear",
-                    description: Text("Tap Listen, capture a bit of conversation, then Stop.")
+                    description: Text("Nod to listen, nod again to stop. Or tap Listen.")
                 )
                 .listRowBackground(Color.clear)
             } else {
@@ -232,8 +240,8 @@ struct RootView: View {
                 Text("Replies")
             } footer: {
                 Text(session.allowsManualGestures
-                     ? "Tap Shake to cycle. Tap Nod to speak."
-                     : "Shake cycles selection. Nod confirms and speaks.")
+                     ? "Up / down picks. Shake or Speak confirms."
+                     : "Nod down next, nod up previous. Shake speaks through the phone speaker.")
             }
         }
     }

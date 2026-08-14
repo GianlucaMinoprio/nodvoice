@@ -115,18 +115,26 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    LabeledContent("Nod") {
-                        Text("Speak selected")
+                    LabeledContent("Nod down") {
+                        Text("Next reply")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Nod up") {
+                        Text("Previous reply")
                             .foregroundStyle(.secondary)
                     }
                     LabeledContent("Shake") {
-                        Text("Next reply")
+                        Text("Speak selected")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Idle nod or shake") {
+                        Text("Start or stop listen")
                             .foregroundStyle(.secondary)
                     }
                 } header: {
                     Text("Gestures")
                 } footer: {
-                    Text("Needs AirPods with head tracking, in-ear, on a physical iPhone.")
+                    Text("Hands-free: nod to listen, nod again to stop. Voice always plays from the iPhone speaker, not the AirPods.")
                 }
 
                 Section {
