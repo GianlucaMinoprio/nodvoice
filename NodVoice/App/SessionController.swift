@@ -19,6 +19,7 @@ final class SessionController: ObservableObject {
     @Published var history: [ConversationTurn] = []
     @Published var settings: AppSettings
     @Published var motionStatus: String = ""
+    @Published var imuLine: String = ""
     @Published var debugLine: String = ""
     @Published var dwellProgress: Double = 0
 
@@ -47,6 +48,10 @@ final class SessionController: ObservableObject {
         head.$statusText
             .receive(on: RunLoop.main)
             .assign(to: &$motionStatus)
+
+        head.$liveLine
+            .receive(on: RunLoop.main)
+            .assign(to: &$imuLine)
 
         head.$headphonesConnected
             .receive(on: RunLoop.main)

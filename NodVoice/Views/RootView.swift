@@ -143,7 +143,7 @@ struct RootView: View {
 
             // Always show IMU. Hiding it lets SwiftUI drop the subscription
             // and the AirPods stream goes stale. When this line is on screen, nods work.
-            Text(session.head.liveLine.isEmpty ? "IMU starting…" : session.head.liveLine)
+            Text(session.imuLine.isEmpty ? session.motionStatus : session.imuLine)
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
 
