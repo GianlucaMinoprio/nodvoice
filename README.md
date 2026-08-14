@@ -26,7 +26,7 @@ No brain-sensing. Just `CMHeadphoneMotionManager`, vibecoded.
 - Mac with **Xcode 16+**
 - iPhone on **iOS 17+** (physical device recommended)
 - **AirPods Pro** (2/3) or any buds with spatial audio / head tracking
-- [xAI API key](https://console.x.ai/) with access to chat + voice (STT/TTS)
+- [xAI](https://console.x.ai/) **SuperGrok / X Premium+** (Sign in in Settings) **or** an API key with chat + voice (STT/TTS)
 
 Simulator cannot stream real headphone motion. Use a device.
 
@@ -40,7 +40,7 @@ open NodVoice.xcodeproj
 
 1. Select your **Team** under Signing & Capabilities
 2. Build to your iPhone
-3. Open the app → **Settings** → paste `XAI_API_KEY`
+3. Open the app → **Settings** → **Sign in with SuperGrok** (or paste an API key)
 4. Put AirPods in, grant mic permission
 5. Tap **Listen**, talk, stop → wait for options → nod
 
@@ -64,6 +64,7 @@ NodVoice/
   Services/
     AudioCaptureService.swift     AVAudioRecorder (m4a)
     HeadGestureService.swift      CMHeadphoneMotionManager nod/shake
+    SuperGrokAuth.swift           Device-code SuperGrok OAuth + Keychain
     XAIClient.swift               STT + Chat + TTS
     SpeechPlayer.swift            AVAudioPlayer for TTS mp3
   Views/               Listen / Options / Settings UI
@@ -79,7 +80,17 @@ NodVoice/
 
 Default chat model is **`grok-4.6`**. Swap to `grok-4.5` or `grok-4-1-fast-non-reasoning` in Settings if you want cheaper/faster options.
 
-Without an API key the app runs a **demo loop** so nod/shake UI still works offline.
+Without SuperGrok sign-in or an API key the app runs a **demo loop** so nod/shake UI still works offline.
+
+### SuperGrok OAuth (mobile)
+
+Settings → **Sign in with SuperGrok** starts xAI **device-code** OAuth (same family as Hermes `xai-oauth`). Safari opens, you approve, NodVoice polls and stores access + refresh tokens in Keychain.
+
+- Uses your grok.com / X Premium+ quota. No pasted API key.
+- Access tokens refresh automatically.
+- Some SuperGrok tiers still get HTTP 403 on the OAuth API surface. If that happens, paste a console API key as fallback.
+
+Official xAI mobile guidance for shipping apps is still [ephemeral tokens](https://docs.x.ai/developers/model-capabilities/audio/ephemeral-tokens) in front of a backend key. SuperGrok OAuth is the personal-demo path.
 
 ### Nod detector
 

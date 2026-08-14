@@ -114,8 +114,8 @@ struct RootView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            if session.settings.apiKey.isEmpty {
-                Label("Demo mode — add an API key in Settings for live STT/TTS", systemImage: "info.circle")
+            if session.settings.apiKey.isEmpty && !SuperGrokSession.isSignedIn {
+                Label("Demo mode — sign in with SuperGrok or add an API key", systemImage: "info.circle")
                     .font(.footnote)
                     .foregroundStyle(.orange)
             }

@@ -19,6 +19,11 @@ struct AppSettings: Equatable {
     static let defaultLanguage = "en"
     static let defaultOptionCount = 3
 
+    var hasLiveCredential: Bool {
+        SuperGrokSession.isSignedIn
+            || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     static func load() -> AppSettings {
         let countRaw = KeychainStore.get(account: optionCountAccount).flatMap(Int.init)
         return AppSettings(
@@ -53,7 +58,7 @@ enum XAIClientError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            return "Add your xAI API key in Settings."
+            return "Sign in with SuperGrok or add an xAI API key in Settings."
         case .badStatus(let code, let body):
             return "xAI HTTP \(code): \(body.prefix(280))"
         case .decodeFailed(let detail):
@@ -129,9 +134,11 @@ actor XAIClient {
     func generateReplyOptions(
         transcript: String,
         prior: [ConversationTurn],
+        bearer: String,
         settings: AppSettings
     ) async throws -> [ReplyOption] {
-        guard !settings.apiKey.isEmpty else { throw XAIClientError.missingAPIKey }
+        let bearer = bearer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bearer.isEmpty else { throw XAIClientError.missingAPIKey }
 
         let system = """
         You are NodVoice, a silent copilot in the user's ear.
@@ -175,7 +182,7 @@ actor XAIClient {
 
         var request = URLRequest(url: baseURL.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"
-        request.setValue("Bearer \(settings.apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 

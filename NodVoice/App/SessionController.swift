@@ -89,8 +89,8 @@ final class SessionController: ObservableObject {
         transcript = ""
         debugLine = ""
 
-        // No API key → local demo so UI + nod gestures still work offline
-        if settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        // No live credential → local demo so UI + nod gestures still work offline
+        if !settings.hasLiveCredential {
             pipelineTask = Task { await runDemoPipeline() }
             return
         }
@@ -116,7 +116,7 @@ final class SessionController: ObservableObject {
     /// Offline path: fake transcript + options so you can practice nod/shake.
     private func runDemoPipeline() async {
         phase = .listening
-        debugLine = "Demo mode (no API key)"
+        debugLine = "Demo mode (no SuperGrok / API key)"
         head.start()
         try? await Task.sleep(nanoseconds: 1_200_000_000)
         guard !Task.isCancelled else { return }
@@ -134,14 +134,14 @@ final class SessionController: ObservableObject {
         ]
         selectedIndex = 0
         phase = .choosing
-        debugLine = "Demo: nod = select, shake = next. TTS needs API key"
+        debugLine = "Demo: nod = select, shake = next. TTS needs SuperGrok or API key"
     }
 
     func stopAndProcess() {
         guard phase == .listening else { return }
 
         // Demo mode has no recorder
-        if settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if !settings.hasLiveCredential {
             pipelineTask?.cancel()
             pipelineTask = Task {
                 phase = .transcribing
@@ -217,11 +217,12 @@ final class SessionController: ObservableObject {
     private func runPipeline(fileURL: URL) async {
         defer { try? FileManager.default.removeItem(at: fileURL) }
         do {
+            let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: settings.apiKey)
             phase = .transcribing
             debugLine = "STT…"
             let text = try await client.transcribe(
                 fileURL: fileURL,
-                apiKey: settings.apiKey,
+                apiKey: bearer,
                 language: settings.language
             )
             try Task.checkCancellation()
@@ -232,6 +233,7 @@ final class SessionController: ObservableObject {
             let replies = try await client.generateReplyOptions(
                 transcript: text,
                 prior: history,
+                bearer: bearer,
                 settings: settings
             )
             try Task.checkCancellation()
@@ -252,7 +254,7 @@ final class SessionController: ObservableObject {
 
     private func speak(option: ReplyOption) async {
         do {
-            if settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !settings.hasLiveCredential {
                 // Demo: mark selection without TTS
                 let turn = ConversationTurn(heard: transcript, spoken: option.text)
                 history.insert(turn, at: 0)
@@ -263,11 +265,12 @@ final class SessionController: ObservableObject {
                 return
             }
 
+            let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: settings.apiKey)
             phase = .speaking
             debugLine = "TTS \(settings.voiceID)…"
             let audio = try await client.synthesize(
                 text: option.text,
-                apiKey: settings.apiKey,
+                apiKey: bearer,
                 voiceID: settings.voiceID,
                 language: settings.language
             )

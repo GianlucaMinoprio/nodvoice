@@ -10,6 +10,9 @@ struct SettingsView: View {
     @State private var language: String = AppSettings.defaultLanguage
     @State private var optionCount: Int = AppSettings.defaultOptionCount
     @State private var showKey = false
+    @State private var showSuperGrok = false
+    @State private var signedIn = SuperGrokSession.isSignedIn
+    @State private var accountHint = SuperGrokSession.load()?.accountHint
 
     private let modelChoices = [
         "grok-4.5",
@@ -22,6 +25,39 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    if signedIn {
+                        LabeledContent("Status") {
+                            Text("Signed in")
+                                .foregroundStyle(.green)
+                                .fontWeight(.semibold)
+                        }
+                        if let accountHint {
+                            LabeledContent("Account") {
+                                Text(accountHint)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Button("Sign out", role: .destructive) {
+                            Task {
+                                await SuperGrokAuth.shared.signOut()
+                                refreshAuth()
+                            }
+                        }
+                    } else {
+                        Button {
+                            showSuperGrok = true
+                        } label: {
+                            Label("Sign in with SuperGrok", systemImage: "person.crop.circle.badge.checkmark")
+                        }
+                    }
+                } header: {
+                    Text("SuperGrok")
+                } footer: {
+                    Text("Uses your grok.com or X Premium+ subscription. No API key required. Tokens stay in the Keychain on this phone.")
+                }
+
                 Section {
                     HStack {
                         Group {
@@ -46,7 +82,7 @@ struct SettingsView: View {
                 } header: {
                     Text("xAI API Key")
                 } footer: {
-                    Text("Stored in the Keychain on this device. Fine for a personal demo. Use ephemeral tokens if you ship this.")
+                    Text("Optional fallback if SuperGrok OAuth is gated on your plan. Stored in the Keychain on this device.")
                 }
 
                 Section("Model") {
@@ -123,6 +159,11 @@ struct SettingsView: View {
                 }
             }
             .onAppear(perform: load)
+            .sheet(isPresented: $showSuperGrok, onDismiss: refreshAuth) {
+                SuperGrokSignInView {
+                    refreshAuth()
+                }
+            }
         }
     }
 
@@ -132,6 +173,12 @@ struct SettingsView: View {
         voiceID = session.settings.voiceID
         language = session.settings.language
         optionCount = session.settings.optionCount
+        refreshAuth()
+    }
+
+    private func refreshAuth() {
+        signedIn = SuperGrokSession.isSignedIn
+        accountHint = SuperGrokSession.load()?.accountHint
     }
 
     private func save() {

@@ -13,6 +13,8 @@
 		529832C789B54CC183BB5532 /* HeadGestureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */; };
 		914349C3ED7749919B26838F /* SpeechPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */; };
 		FB72C0C078524416AF82B357 /* XAIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138DEE481E4C4447889C0185 /* XAIClient.swift */; };
+		8B2F0D3C5E905214B7C6DA12 /* SuperGrokAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */; };
+		AD4B2F5E70127436D9E8FC34 /* SuperGrokSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */; };
 		B54213BA4A234FC998D5BEDB /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C39E72E0D214863B2AA60CC /* KeychainStore.swift */; };
 		5C5428ACFBC848D38918788D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6257F0D4CCD49AE93A988FC /* RootView.swift */; };
 		002EFB98CFD743D789F2F0CE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84456D0BEAE42DF9C27BF42 /* SettingsView.swift */; };
@@ -28,6 +30,8 @@
 		19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadGestureService.swift; sourceTree = "<group>"; };
 		034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPlayer.swift; sourceTree = "<group>"; };
 		138DEE481E4C4447889C0185 /* XAIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XAIClient.swift; sourceTree = "<group>"; };
+		7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokAuth.swift; sourceTree = "<group>"; };
+		9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperGrokSignInView.swift; sourceTree = "<group>"; };
 		0C39E72E0D214863B2AA60CC /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		B6257F0D4CCD49AE93A988FC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		C84456D0BEAE42DF9C27BF42 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -100,6 +104,7 @@
 				19C579AE06E4423C88AF15B3 /* HeadGestureService.swift */,
 				034C17FF0D284DCB9AD94659 /* SpeechPlayer.swift */,
 				138DEE481E4C4447889C0185 /* XAIClient.swift */,
+				7A1E9C2B4D8F4103A6B5C901 /* SuperGrokAuth.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -109,6 +114,7 @@
 			children = (
 				B6257F0D4CCD49AE93A988FC /* RootView.swift */,
 				C84456D0BEAE42DF9C27BF42 /* SettingsView.swift */,
+				9C3A1E4D6F016325C8D7EB23 /* SuperGrokSignInView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -197,6 +203,8 @@
 				529832C789B54CC183BB5532 /* HeadGestureService.swift in Sources */,
 				914349C3ED7749919B26838F /* SpeechPlayer.swift in Sources */,
 				FB72C0C078524416AF82B357 /* XAIClient.swift in Sources */,
+				8B2F0D3C5E905214B7C6DA12 /* SuperGrokAuth.swift in Sources */,
+				AD4B2F5E70127436D9E8FC34 /* SuperGrokSignInView.swift in Sources */,
 				B54213BA4A234FC998D5BEDB /* KeychainStore.swift in Sources */,
 				5C5428ACFBC848D38918788D /* RootView.swift in Sources */,
 				002EFB98CFD743D789F2F0CE /* SettingsView.swift in Sources */,
