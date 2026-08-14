@@ -8,11 +8,18 @@ final class SessionController: ObservableObject {
     @Published var phase: SessionPhase = .idle
     @Published var transcript: String = ""
     @Published var options: [ReplyOption] = []
-    @Published var selectedIndex: Int = 0
+    @Published var selectedIndex: Int = 0 {
+        didSet {
+            if oldValue != selectedIndex, phase == .choosing {
+                restartDwell()
+            }
+        }
+    }
     @Published var history: [ConversationTurn] = []
     @Published var settings: AppSettings
     @Published var motionStatus: String = ""
     @Published var debugLine: String = ""
+    @Published var dwellProgress: Double = 0
 
     let capture = AudioCaptureService()
     let head = HeadGestureService()
@@ -21,6 +28,10 @@ final class SessionController: ObservableObject {
 
     private var gestureBag: AnyCancellable?
     private var pipelineTask: Task<Void, Never>?
+    private var listenTask: Task<Void, Never>?
+    private var dwellTask: Task<Void, Never>?
+    private var ignoreGesturesUntil: TimeInterval = 0
+    private let dwellSeconds: TimeInterval = 2.0
 
     init() {
         settings = AppSettings.load()
@@ -123,17 +134,19 @@ final class SessionController: ObservableObject {
 
     func startListening() {
         pipelineTask?.cancel()
+        listenTask?.cancel()
+        cancelDwell()
         player.stop()
         options = []
         selectedIndex = 0
         transcript = ""
         debugLine = ""
+        lockGestures(1.1)
 
         guard canUseApp else {
             phase = .error("Put AirPods in to use NodVoice")
             return
         }
-        // No live credential → local demo so UI + nod gestures still work offline
         if !settings.hasLiveCredential {
             pipelineTask = Task { await runDemoPipeline() }
             return
@@ -149,7 +162,9 @@ final class SessionController: ObservableObject {
             do {
                 try capture.start()
                 phase = .listening
+                debugLine = "Listening. Silence ends the turn. Shake stops."
                 head.start()
+                startListenMonitor()
             } catch {
                 guard !Task.isCancelled else { return }
                 phase = .error(error.localizedDescription)
@@ -160,60 +175,50 @@ final class SessionController: ObservableObject {
     /// Offline path: fake transcript + options so you can practice nod/shake.
     private func runDemoPipeline() async {
         phase = .listening
-        debugLine = "Demo mode (sign in with SuperGrok)"
+        debugLine = "Demo listen. Silence will draft replies."
         head.start()
-        try? await Task.sleep(nanoseconds: 1_200_000_000)
-        guard !Task.isCancelled else { return }
-        phase = .transcribing
-        try? await Task.sleep(nanoseconds: 400_000_000)
-        guard !Task.isCancelled else { return }
-        transcript = "So what do you actually think about that idea?"
-        phase = .thinking
-        try? await Task.sleep(nanoseconds: 450_000_000)
-        guard !Task.isCancelled else { return }
-        options = [
-            ReplyOption(text: "I like it. Let's try a small version this week.", tone: "direct"),
-            ReplyOption(text: "Interesting - what's the riskiest assumption?", tone: "curious"),
-            ReplyOption(text: "Honestly? Feels like vibecoding with AirPods.", tone: "witty")
-        ]
-        selectedIndex = 0
-        phase = .choosing
-        debugLine = "Demo: nod down/up = pick, shake = speak. TTS needs SuperGrok"
+        startListenMonitor()
     }
 
     func stopAndProcess() {
         guard phase == .listening else { return }
+        listenTask?.cancel()
 
-        // Demo mode has no recorder
         if !settings.hasLiveCredential {
             pipelineTask?.cancel()
             pipelineTask = Task {
                 phase = .transcribing
-                transcript = "So what do you actually think about that idea?"
+                if transcript.isEmpty {
+                    transcript = "So what do you actually think about that idea?"
+                }
                 phase = .thinking
                 try? await Task.sleep(nanoseconds: 300_000_000)
                 guard !Task.isCancelled else { return }
-                options = [
-                    ReplyOption(text: "I like it. Let's try a small version this week.", tone: "direct"),
-                    ReplyOption(text: "Interesting - what's the riskiest assumption?", tone: "curious"),
-                    ReplyOption(text: "Honestly? Feels like vibecoding with AirPods.", tone: "witty")
-                ]
-                selectedIndex = 0
-                phase = .choosing
-                debugLine = "Demo: nod down/up = pick, shake = speak"
+                presentDemoOptions()
             }
             return
         }
 
-        guard let url = capture.stop() else {
-            phase = .error("No recording captured")
-            return
-        }
-
+        let url = capture.stop()
         pipelineTask?.cancel()
         pipelineTask = Task {
-            await runPipeline(fileURL: url)
+            await finishTurn(lastChunk: url)
         }
+    }
+
+    func endSession() {
+        listenTask?.cancel()
+        pipelineTask?.cancel()
+        cancelDwell()
+        _ = capture.stop()
+        player.stop()
+        options = []
+        selectedIndex = 0
+        dwellProgress = 0
+        phase = .idle
+        debugLine = "Session stopped"
+        lockGestures(0.8)
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 
     func cycleOption(forward: Bool = true) {
@@ -228,6 +233,7 @@ final class SessionController: ObservableObject {
 
     func confirmSelection() {
         guard phase == .choosing, let option = selectedOption else { return }
+        cancelDwell()
         pipelineTask?.cancel()
         pipelineTask = Task {
             await speak(option: option)
@@ -273,42 +279,32 @@ final class SessionController: ObservableObject {
     }
 
     func resetToIdle() {
-        pipelineTask?.cancel()
-        _ = capture.stop()
-        player.stop()
-        options = []
-        selectedIndex = 0
-        phase = .idle
+        endSession()
         debugLine = ""
     }
 
     // MARK: - Gestures
 
     private func handle(gesture: HeadGestureService.Gesture) {
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now >= ignoreGesturesUntil else { return }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        switch phase {
-        case .idle, .error:
-            startListening()
-            debugLine = "Hands-free listen"
-        case .listening:
-            stopAndProcess()
-        case .choosing:
-            switch gesture {
-            case .nodDown:
-                cycleOption(forward: true)
-                announceSelection()
-            case .nodUp:
-                cycleOption(forward: false)
-                announceSelection()
-            case .shake:
-                confirmSelection()
+        switch gesture {
+        case .shake:
+            switch phase {
+            case .idle, .error:
+                startListening()
+            default:
+                endSession()
             }
-        case .speaking:
-            player.stop()
-            phase = .idle
-            debugLine = "Stopped voice. Nod to listen again."
-        case .transcribing, .thinking:
-            debugLine = "Got \(label(for: gesture)), wait for replies"
+        case .nodDown:
+            guard phase == .choosing else { return }
+            cycleOption(forward: true)
+            announceSelection()
+        case .nodUp:
+            guard phase == .choosing else { return }
+            cycleOption(forward: false)
+            announceSelection()
         }
     }
 
@@ -329,21 +325,149 @@ final class SessionController: ObservableObject {
         }
     }
 
-    // MARK: - Pipeline
+    private func lockGestures(_ seconds: TimeInterval) {
+        ignoreGesturesUntil = ProcessInfo.processInfo.systemUptime + seconds
+    }
 
-    private func runPipeline(fileURL: URL) async {
-        defer { try? FileManager.default.removeItem(at: fileURL) }
+    private func presentDemoOptions() {
+        options = [
+            ReplyOption(text: "I like it. Let's try a small version this week.", tone: "direct"),
+            ReplyOption(text: "Interesting - what's the riskiest assumption?", tone: "curious"),
+            ReplyOption(text: "Honestly? Feels like vibecoding with AirPods.", tone: "witty")
+        ]
+        selectedIndex = 0
+        phase = .choosing
+        debugLine = "Hold on a reply for 2s to speak"
+        lockGestures(0.5)
+        restartDwell()
+    }
+
+    private func restartDwell() {
+        dwellTask?.cancel()
+        dwellProgress = 0
+        guard phase == .choosing else { return }
+        dwellTask = Task { await runDwell() }
+    }
+
+    private func cancelDwell() {
+        dwellTask?.cancel()
+        dwellTask = nil
+        dwellProgress = 0
+    }
+
+    private func runDwell() async {
+        try? await Task.sleep(nanoseconds: 350_000_000)
+        guard !Task.isCancelled, phase == .choosing else { return }
+        let ticks = 40
+        for i in 1...ticks {
+            guard !Task.isCancelled, phase == .choosing else { return }
+            dwellProgress = Double(i) / Double(ticks)
+            try? await Task.sleep(nanoseconds: UInt64(dwellSeconds / Double(ticks) * 1_000_000_000))
+        }
+        guard !Task.isCancelled, phase == .choosing else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        confirmSelection()
+    }
+
+    private func startListenMonitor() {
+        listenTask?.cancel()
+        listenTask = Task { await monitorListening() }
+    }
+
+    private func monitorListening() async {
+        var heardSpeech = false
+        var silentFor: TimeInterval = 0
+        var lastRotate = Date()
+        let started = Date()
+        while !Task.isCancelled, phase == .listening {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            if !settings.hasLiveCredential {
+                if Date().timeIntervalSince(started) > 1.8 {
+                    if transcript.isEmpty {
+                        transcript = "So what do you actually think about that idea?"
+                    }
+                    stopAndProcess()
+                    return
+                }
+                continue
+            }
+
+            capture.updateMeters()
+            if capture.averagePower > -28 {
+                heardSpeech = true
+                silentFor = 0
+            } else if heardSpeech {
+                silentFor += 0.1
+            }
+
+            if Date().timeIntervalSince(lastRotate) >= 2.4, phase == .listening {
+                lastRotate = Date()
+                await liveTranscribeChunk()
+            }
+
+            let elapsed = Date().timeIntervalSince(started)
+            if heardSpeech, silentFor >= 1.6, elapsed >= 2.0 {
+                stopAndProcess()
+                return
+            }
+        }
+    }
+
+    private func liveTranscribeChunk() async {
+        guard settings.hasLiveCredential, phase == .listening else { return }
         do {
+            guard let url = try capture.rotate() else { return }
+            defer { try? FileManager.default.removeItem(at: url) }
+            try Task.checkCancellation()
             let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: "")
-            phase = .transcribing
-            debugLine = "STT…"
-            let text = try await client.transcribe(
-                fileURL: fileURL,
+            let piece = try await client.transcribe(
+                fileURL: url,
                 apiKey: bearer,
                 language: settings.language
             )
-            try Task.checkCancellation()
-            transcript = text
+            appendLive(piece)
+        } catch {
+            // Chunk STT can fail on silence. Keep listening.
+        }
+    }
+
+    private func appendLive(_ piece: String) {
+        let piece = piece.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !piece.isEmpty else { return }
+        if transcript.isEmpty {
+            transcript = piece
+        } else if !transcript.localizedCaseInsensitiveContains(piece) {
+            transcript += " " + piece
+        }
+        debugLine = "Live transcript"
+    }
+
+    // MARK: - Pipeline
+
+    private func finishTurn(lastChunk: URL?) async {
+        defer {
+            if let lastChunk {
+                try? FileManager.default.removeItem(at: lastChunk)
+            }
+        }
+        do {
+            let bearer = try await SuperGrokAuth.shared.validAccessToken(fallbackAPIKey: "")
+            if let lastChunk {
+                phase = .transcribing
+                debugLine = "STT…"
+                if let piece = try? await client.transcribe(
+                    fileURL: lastChunk,
+                    apiKey: bearer,
+                    language: settings.language
+                ) {
+                    appendLive(piece)
+                }
+            }
+            let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else {
+                phase = .error("Nothing heard. Shake to listen again.")
+                return
+            }
 
             phase = .thinking
             debugLine = "Chat \(settings.chatModel)…"
@@ -358,7 +482,9 @@ final class SessionController: ObservableObject {
             options = replies
             selectedIndex = 0
             phase = .choosing
-            debugLine = "Nod down/up = pick · shake = speak"
+            debugLine = "Hold on a reply for 2s to speak"
+            lockGestures(0.6)
+            restartDwell()
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         } catch is CancellationError {
             // ignore
@@ -375,10 +501,10 @@ final class SessionController: ObservableObject {
                 // Demo: mark selection without TTS
                 let turn = ConversationTurn(heard: transcript, spoken: option.text)
                 history.insert(turn, at: 0)
-                phase = .idle
-                debugLine = "Demo selected: \(option.text)"
                 options = []
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
+                lockGestures(1.1)
+                startListening()
                 return
             }
 
@@ -393,15 +519,15 @@ final class SessionController: ObservableObject {
             )
             try Task.checkCancellation()
 
-            try await player.play(data: audio)
+            try await player.play(data: audio, volume: Float(settings.speakerVolume))
             try Task.checkCancellation()
 
             let turn = ConversationTurn(heard: transcript, spoken: option.text)
             history.insert(turn, at: 0)
             if history.count > 20 { history = Array(history.prefix(20)) }
-            phase = .idle
-            debugLine = "Done. Nod to listen again."
             options = []
+            lockGestures(1.2)
+            startListening()
         } catch is CancellationError {
             // ignore
         } catch {

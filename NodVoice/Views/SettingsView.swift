@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var voiceID: String = AppSettings.defaultVoice
     @State private var language: String = AppSettings.defaultLanguage
     @State private var optionCount: Int = AppSettings.defaultOptionCount
+    @State private var speakerVolume: Double = AppSettings.defaultSpeakerVolume
     @State private var showSuperGrok = false
     @State private var signedIn = SuperGrokSession.isSignedIn
     @State private var accountHint = SuperGrokSession.load()?.accountHint
@@ -104,6 +105,11 @@ struct SettingsView: View {
                     Stepper(value: $optionCount, in: 2...5) {
                         Text("Reply options: \(optionCount)")
                     }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Speaker \(Int(speakerVolume * 100))%")
+                        Slider(value: $speakerVolume, in: 0.2...1, step: 0.05)
+                    }
                 } header: {
                     Text("Model")
                 } footer: {
@@ -120,17 +126,21 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     LabeledContent("Shake") {
-                        Text("Speak selected")
+                        Text("Start or stop session")
                             .foregroundStyle(.secondary)
                     }
-                    LabeledContent("Idle nod or shake") {
-                        Text("Start or stop listen")
+                    LabeledContent("Stay on a reply") {
+                        Text("Speak after 2s")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Silence") {
+                        Text("Drafts replies")
                             .foregroundStyle(.secondary)
                     }
                 } header: {
                     Text("Gestures")
                 } footer: {
-                    Text("Hands-free: nod to listen, nod again to stop. Voice always plays from the iPhone speaker, not the AirPods.")
+                    Text("Shake to start. After someone pauses, options appear. Hold a reply to speak from the phone speaker. Shake stops the session.")
                 }
 
                 Section {
@@ -173,6 +183,7 @@ struct SettingsView: View {
         voiceID = session.settings.voiceID
         language = session.settings.language
         optionCount = session.settings.optionCount
+        speakerVolume = session.settings.speakerVolume
         refreshAuth()
     }
 
@@ -186,6 +197,7 @@ struct SettingsView: View {
         session.settings.voiceID = nonempty(voiceID, default: AppSettings.defaultVoice)
         session.settings.language = nonempty(language, default: AppSettings.defaultLanguage)
         session.settings.optionCount = optionCount
+        session.settings.speakerVolume = speakerVolume
         session.saveSettings()
         dismiss()
     }

@@ -1,5 +1,7 @@
 import AVFoundation
 import Foundation
+import MediaPlayer
+import UIKit
 
 @MainActor
 final class SpeechPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
@@ -7,11 +9,12 @@ final class SpeechPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     private var player: AVAudioPlayer?
     private var continuation: CheckedContinuation<Void, Never>?
+    private var volumeView: MPVolumeView?
 
-    /// Play Grok TTS on the iPhone speaker even if AirPods are connected.
-    func play(data: Data) async throws {
+    func play(data: Data, volume: Float = 0.7) async throws {
         stop()
         try routeToPhoneSpeaker()
+        raiseSystemVolume(to: max(0.2, min(1, volume)))
 
         let player = try AVAudioPlayer(data: data)
         player.delegate = self
@@ -34,7 +37,6 @@ final class SpeechPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         continuation = nil
     }
 
-    /// Force built-in speaker. Bluetooth flags would send Grok into the buds.
     func routeToPhoneSpeaker() throws {
         let session = AVAudioSession.sharedInstance()
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
@@ -48,6 +50,24 @@ final class SpeechPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         if let builtIn = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
             try? session.setPreferredInput(builtIn)
         }
+    }
+
+    /// Bump the phone ringer/media volume so someone nearby can hear Grok.
+    private func raiseSystemVolume(to target: Float) {
+        let current = AVAudioSession.sharedInstance().outputVolume
+        guard current + 0.02 < target else { return }
+        if volumeView == nil {
+            let view = MPVolumeView(frame: CGRect(x: -2000, y: -2000, width: 10, height: 10))
+            view.alpha = 0.01
+            volumeView = view
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap(\.windows)
+                .first { $0.isKeyWindow }?
+                .addSubview(view)
+        }
+        guard let slider = volumeView?.subviews.compactMap({ $0 as? UISlider }).first else { return }
+        slider.value = target
     }
 
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {

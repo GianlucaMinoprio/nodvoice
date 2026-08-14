@@ -5,18 +5,21 @@ struct AppSettings: Equatable {
     var voiceID: String
     var language: String
     var optionCount: Int
+    var speakerVolume: Double
 
     static let apiKeyAccount = "xai_api_key"
     static let modelAccount = "chat_model"
     static let voiceAccount = "voice_id"
     static let languageAccount = "language"
     static let optionCountAccount = "option_count"
+    static let speakerVolumeAccount = "speaker_volume"
 
     /// Default chat model for multi-reply generation.
     static let defaultChatModel = "grok-4.5"
     static let defaultVoice = "eve"
     static let defaultLanguage = "en"
     static let defaultOptionCount = 3
+    static let defaultSpeakerVolume = 0.7
 
     var hasLiveCredential: Bool {
         SuperGrokSession.isSignedIn
@@ -27,11 +30,13 @@ struct AppSettings: Equatable {
         let countRaw = KeychainStore.get(account: optionCountAccount).flatMap(Int.init)
         var model = KeychainStore.get(account: modelAccount) ?? defaultChatModel
         if model == "grok-4.6" { model = defaultChatModel }
+        let volumeRaw = KeychainStore.get(account: speakerVolumeAccount).flatMap(Double.init)
         return AppSettings(
             chatModel: model,
             voiceID: KeychainStore.get(account: voiceAccount) ?? defaultVoice,
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
-            optionCount: max(2, min(5, countRaw ?? defaultOptionCount))
+            optionCount: max(2, min(5, countRaw ?? defaultOptionCount)),
+            speakerVolume: min(1, max(0.2, volumeRaw ?? defaultSpeakerVolume))
         )
     }
 
@@ -41,6 +46,7 @@ struct AppSettings: Equatable {
         KeychainStore.set(voiceID, account: Self.voiceAccount)
         KeychainStore.set(language, account: Self.languageAccount)
         KeychainStore.set(String(optionCount), account: Self.optionCountAccount)
+        KeychainStore.set(String(speakerVolume), account: Self.speakerVolumeAccount)
     }
 }
 

@@ -168,9 +168,9 @@ struct RootView: View {
             Text("Session")
         } footer: {
             if session.allowsManualGestures {
-                Text("Simulator: nod to listen. Up/down picks a reply. Shake speaks it.")
+                Text("Simulator: shake starts or stops. Up/down picks. Hold 2s to speak.")
             } else {
-                Text("Nod to start or stop listen. Nod down = next reply, nod up = previous. Shake speaks it out the phone speaker.")
+                Text("Shake starts a session. Silence drafts replies. Nod down/up picks. Hold 2s to speak from the phone speaker. Shake stops.")
             }
         }
     }
@@ -189,7 +189,7 @@ struct RootView: View {
                 ContentUnavailableView(
                     "Nothing heard yet",
                     systemImage: "ear",
-                    description: Text("Nod to listen, nod again to stop. Or tap Listen.")
+                    description: Text("Shake to listen. It stops on silence, or shake again to end.")
                 )
                 .listRowBackground(Color.clear)
             } else {
@@ -211,9 +211,10 @@ struct RootView: View {
                         session.selectedIndex = index
                     } label: {
                         HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: index == session.selectedIndex ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(index == session.selectedIndex ? Color.accentColor : .secondary)
-                                .font(.title3)
+                            DwellRing(
+                                progress: index == session.selectedIndex ? session.dwellProgress : 0,
+                                selected: index == session.selectedIndex
+                            )
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(option.text)
                                     .font(.body)
@@ -240,8 +241,8 @@ struct RootView: View {
                 Text("Replies")
             } footer: {
                 Text(session.allowsManualGestures
-                     ? "Up / down picks. Shake or Speak confirms."
-                     : "Nod down next, nod up previous. Shake speaks through the phone speaker.")
+                     ? "Stay on a reply for 2s. The circle fills, then it speaks."
+                     : "Nod down next, nod up previous. Stay on one for 2s to speak.")
             }
         }
     }
@@ -272,6 +273,28 @@ struct RootView: View {
 #Preview {
     RootView()
         .environmentObject(SessionController())
+}
+
+private struct DwellRing: View {
+    var progress: Double
+    var selected: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 0.05), value: progress)
+            Image(systemName: selected ? "checkmark" : "")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+        }
+        .frame(width: 26, height: 26)
+        .accessibilityHidden(true)
+    }
 }
 
 /// Simulator Hardware → Shake (or shake a device) cycles replies.

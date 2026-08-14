@@ -12,8 +12,7 @@ enum DeviceEnvironment {
     }
 }
 
-/// Detects nod-up, nod-down, and shake from AirPods IMU via CMHeadphoneMotionManager.
-/// Simulator has no IMU: callers use `emitManual`.
+/// AirPods IMU: nod up / nod down / a real left-right head shake.
 @MainActor
 final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionManagerDelegate {
     enum Gesture: String {
@@ -38,16 +37,17 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     private let manager = CMHeadphoneMotionManager()
     private let queue = OperationQueue()
 
-    // ~9° nod, ~11° shake. Casual AirPods motion, not a full bow.
-    private var nodPitchThreshold = 0.16
-    private var shakeYawThreshold = 0.20
-    private var gestureCooldown: TimeInterval = 0.55
+    private var nodPitchThreshold = 0.18          // ~10°
+    private var shakeYawThreshold = 0.34          // ~19°, must cross both ways
+    private var gestureCooldown: TimeInterval = 0.65
     private var lastGestureAt: TimeInterval = 0
-    private var yawHistory: [(t: TimeInterval, v: Double)] = []
-    private let historyWindow: TimeInterval = 0.55
+    private var lastNodAt: TimeInterval = 0
 
     private var pitchBaseline: Double?
+    private var yawBaseline: Double?
     private var nodArmed = true
+    private var shakeSign = 0
+    private var shakeArmedAt: TimeInterval = 0
 
     override init() {
         super.init()
@@ -61,7 +61,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         if DeviceEnvironment.isSimulator {
             headphonesConnected = false
             isAvailable = false
-            statusText = "Simulator: tap Nod up / Nod down / Shake"
+            statusText = "Simulator: tap gestures"
             return
         }
         let connected = manager.isDeviceMotionAvailable
@@ -79,9 +79,7 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
 
     func headphoneMotionManagerDidConnect(_ manager: CMHeadphoneMotionManager) {
         refreshConnection()
-        if headphonesConnected, !isRunning {
-            start()
-        }
+        if headphonesConnected, !isRunning { start() }
     }
 
     func headphoneMotionManagerDidDisconnect(_ manager: CMHeadphoneMotionManager) {
@@ -145,9 +143,6 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         lastYaw = yaw
         lastRoll = roll
         sampleCount += 1
-        if sampleCount == 1 {
-            statusText = "IMU live. Nod to listen. Nod up/down to pick. Shake to speak."
-        }
         if sampleCount % 8 == 0 {
             liveLine = String(
                 format: "IMU  pitch %+.0f°  yaw %+.0f°  roll %+.0f°  n=%d",
@@ -159,26 +154,29 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         }
 
         if pitchBaseline == nil { pitchBaseline = pitch }
-        let pitchDelta = angleDifference(pitch, pitchBaseline ?? pitch)
-        // Slow drift so resting pose updates without eating the nod.
-        pitchBaseline = interpolateAngle(from: pitchBaseline ?? pitch, to: pitch, amount: 0.008)
-        detectDirectionalNod(pitchDelta: pitchDelta)
+        if yawBaseline == nil { yawBaseline = yaw }
 
-        let now = ProcessInfo.processInfo.systemUptime
-        yawHistory.append((now, yaw))
-        yawHistory.removeAll { now - $0.t > historyWindow }
-        detectWindowedShake()
+        let pitchDelta = angleDifference(pitch, pitchBaseline ?? pitch)
+        let yawDelta = angleDifference(yaw, yawBaseline ?? yaw)
+        pitchBaseline = interpolateAngle(from: pitchBaseline ?? pitch, to: pitch, amount: 0.008)
+        yawBaseline = interpolateAngle(from: yawBaseline ?? yaw, to: yaw, amount: 0.012)
+
+        detectDirectionalNod(pitchDelta: pitchDelta)
+        detectRealShake(yawDelta: yawDelta)
     }
 
-    /// Look down past threshold = nodDown. Look up = nodUp.
-    /// Rearm only after the head comes back to center so one nod is one event.
+    /// Flipped vs the previous build: chin down = nodDown.
     private func detectDirectionalNod(pitchDelta: Double) {
         if nodArmed {
-            if pitchDelta >= nodPitchThreshold {
+            if pitchDelta <= -nodPitchThreshold {
                 nodArmed = false
+                lastNodAt = ProcessInfo.processInfo.systemUptime
+                shakeSign = 0
                 emit(.nodDown)
-            } else if pitchDelta <= -nodPitchThreshold {
+            } else if pitchDelta >= nodPitchThreshold {
                 nodArmed = false
+                lastNodAt = ProcessInfo.processInfo.systemUptime
+                shakeSign = 0
                 emit(.nodUp)
             }
         } else if abs(pitchDelta) < nodPitchThreshold * 0.35 {
@@ -186,14 +184,31 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         }
     }
 
-    private func detectWindowedShake() {
-        guard yawHistory.count >= 6 else { return }
-        let origin = yawHistory[0].v
-        let deltas = yawHistory.map { angleDifference($0.v, origin) }
-        guard let lo = deltas.min(), let hi = deltas.max() else { return }
-        guard (hi - lo) >= shakeYawThreshold else { return }
-        yawHistory.removeAll()
-        emit(.shake)
+    /// A real shake is left then right (or right then left), not a glance.
+    private func detectRealShake(yawDelta: Double) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastNodAt < 0.9 {
+            shakeSign = 0
+            return
+        }
+        if shakeSign != 0, now - shakeArmedAt > 0.85 {
+            shakeSign = 0
+        }
+
+        if shakeSign == 0 {
+            if abs(yawDelta) >= shakeYawThreshold {
+                shakeSign = yawDelta > 0 ? 1 : -1
+                shakeArmedAt = now
+            }
+            return
+        }
+
+        let opposite = Double(shakeSign) * yawDelta <= -shakeYawThreshold
+        if opposite {
+            shakeSign = 0
+            yawBaseline = lastYaw
+            emit(.shake)
+        }
     }
 
     private func emit(_ gesture: Gesture) {
@@ -207,7 +222,6 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
         case .shake: statusText = "Shake"
         }
         gestureSubject.send(gesture)
-
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 700_000_000)
             if self.lastGesture == gesture, self.isRunning {
@@ -223,8 +237,9 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
 
     private func resetTracking() {
         pitchBaseline = nil
+        yawBaseline = nil
         nodArmed = true
-        yawHistory.removeAll()
+        shakeSign = 0
         sampleCount = 0
         liveLine = ""
     }
