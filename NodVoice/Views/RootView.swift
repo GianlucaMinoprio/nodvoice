@@ -141,37 +141,35 @@ struct RootView: View {
                     .foregroundStyle(.orange)
             }
 
-            if !session.head.liveLine.isEmpty {
+            if session.settings.showMotionDebug, !session.head.liveLine.isEmpty {
                 Text(session.head.liveLine)
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
             }
 
-            if !session.motionStatus.isEmpty {
+            if session.settings.showMotionDebug, !session.motionStatus.isEmpty {
                 Text(session.motionStatus)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            if !session.debugLine.isEmpty {
+            if !session.debugLine.isEmpty, session.settings.showMotionDebug || session.phase.errorMessage != nil {
                 Text(session.debugLine)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
 
             if !SuperGrokSession.isSignedIn {
-                Label("Demo mode — sign in with SuperGrok in Settings", systemImage: "info.circle")
+                Label("Demo mode. Sign in with SuperGrok in Settings.", systemImage: "info.circle")
                     .font(.footnote)
                     .foregroundStyle(.orange)
             }
         } header: {
             Text("Session")
         } footer: {
-            if session.allowsManualGestures {
-                Text("Simulator: shake starts or stops. Up/down picks. Hold 3s to speak.")
-            } else {
-                Text("Shake starts a session. Silence drafts replies. Nod down/up picks. Hold 3s to speak from the phone speaker. Shake stops.")
-            }
+            Text(session.phase == .choosing
+                 ? "Stay on a reply. The circle fills, then it speaks."
+                 : "Shake to start. Pause to draft. Shake to stop.")
         }
     }
 
@@ -240,9 +238,7 @@ struct RootView: View {
             } header: {
                 Text("Replies")
             } footer: {
-                Text(session.allowsManualGestures
-                     ? "Stay on a reply for 3s. The circle fills, then it speaks."
-                     : "Nod down next, nod up previous. Stay on one for 3s to speak.")
+                Text("Stay on a reply. The circle fills, then it speaks.")
             }
         }
     }

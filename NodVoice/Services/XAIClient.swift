@@ -6,6 +6,7 @@ struct AppSettings: Equatable {
     var language: String
     var optionCount: Int
     var speakerVolume: Double
+    var showMotionDebug: Bool
 
     static let apiKeyAccount = "xai_api_key"
     static let modelAccount = "chat_model"
@@ -13,6 +14,7 @@ struct AppSettings: Equatable {
     static let languageAccount = "language"
     static let optionCountAccount = "option_count"
     static let speakerVolumeAccount = "speaker_volume"
+    static let motionDebugAccount = "motion_debug"
 
     /// Default chat model for multi-reply generation.
     static let defaultChatModel = "grok-4.5"
@@ -36,7 +38,8 @@ struct AppSettings: Equatable {
             voiceID: KeychainStore.get(account: voiceAccount) ?? defaultVoice,
             language: KeychainStore.get(account: languageAccount) ?? defaultLanguage,
             optionCount: max(2, min(5, countRaw ?? defaultOptionCount)),
-            speakerVolume: min(1, max(0.2, volumeRaw ?? defaultSpeakerVolume))
+            speakerVolume: min(1, max(0.2, volumeRaw ?? defaultSpeakerVolume)),
+            showMotionDebug: KeychainStore.get(account: motionDebugAccount) == "1"
         )
     }
 
@@ -47,6 +50,7 @@ struct AppSettings: Equatable {
         KeychainStore.set(language, account: Self.languageAccount)
         KeychainStore.set(String(optionCount), account: Self.optionCountAccount)
         KeychainStore.set(String(speakerVolume), account: Self.speakerVolumeAccount)
+        KeychainStore.set(showMotionDebug ? "1" : "0", account: Self.motionDebugAccount)
     }
 }
 
@@ -147,7 +151,9 @@ actor XAIClient {
         - Each option is something the user would speak out loud (1 sentence, max ~25 words)
         - Vary tone: e.g. direct, warm, witty, clarifying
         - No markdown, no quotes around the whole option
+        - Never use em dashes or unicode dashes. Use a comma, period, or hyphen.
         - Prefer natural conversational English unless the transcript is clearly another language
+        - If the transcript is messy or accented, reply to the likely meaning, not the garbled words
         - Return ONLY valid JSON: {"options":[{"text":"...","tone":"direct"}, ...]}
         """
 

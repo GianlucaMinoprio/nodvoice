@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var language: String = AppSettings.defaultLanguage
     @State private var optionCount: Int = AppSettings.defaultOptionCount
     @State private var speakerVolume: Double = AppSettings.defaultSpeakerVolume
+    @State private var showMotionDebug = false
     @State private var showSuperGrok = false
     @State private var signedIn = SuperGrokSession.isSignedIn
     @State private var accountHint = SuperGrokSession.load()?.accountHint
@@ -148,6 +149,7 @@ struct SettingsView: View {
                         Text("NodVoice 1.0")
                             .foregroundStyle(.secondary)
                     }
+                    Toggle("Show motion debug", isOn: $showMotionDebug)
                     Link(destination: URL(string: "https://docs.x.ai/developers/model-capabilities/audio/voice")!) {
                         Label("xAI voice docs", systemImage: "link")
                     }
@@ -184,6 +186,7 @@ struct SettingsView: View {
         language = session.settings.language
         optionCount = session.settings.optionCount
         speakerVolume = session.settings.speakerVolume
+        showMotionDebug = session.settings.showMotionDebug
         refreshAuth()
     }
 
@@ -198,6 +201,7 @@ struct SettingsView: View {
         session.settings.language = nonempty(language, default: AppSettings.defaultLanguage)
         session.settings.optionCount = optionCount
         session.settings.speakerVolume = speakerVolume
+        session.settings.showMotionDebug = showMotionDebug
         session.saveSettings()
         dismiss()
     }
