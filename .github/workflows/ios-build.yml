@@ -1,0 +1,74 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: xcodebuild (simulator, no sign)
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          echo "Available Xcodes:"
+          ls /Applications | grep -i xcode || true
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || \
+            sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer || \
+            sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer || \
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || true
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Show project
+        run: xcodebuild -project NodVoice.xcodeproj -list
+
+      - name: Resolve destination
+        id: dest
+        run: |
+          # Prefer iPhone 16 / 15 simulator
+          DEST=$(xcrun simctl list devices available | grep -E "iPhone 1[56]" | head -1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/' || true)
+          if [ -n "$DEST" ]; then
+            echo "destination=platform=iOS Simulator,id=$DEST" >> "$GITHUB_OUTPUT"
+          else
+            echo "destination=generic/platform=iOS Simulator" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Using: $(cat "$GITHUB_OUTPUT")"
+
+      - name: Build for Simulator (CODE_SIGNING_ALLOWED=NO)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project NodVoice.xcodeproj \
+            -scheme NodVoice \
+            -configuration Debug \
+            -destination "${{ steps.dest.outputs.destination }}" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            build | xcbeautify || xcodebuild \
+            -project NodVoice.xcodeproj \
+            -scheme NodVoice \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-derived-data
+          path: DerivedData/Logs
+          if-no-files-found: ignore
