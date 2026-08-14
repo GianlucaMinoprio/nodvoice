@@ -70,6 +70,12 @@ final class SessionController: ObservableObject {
         transcript = ""
         debugLine = ""
 
+        // No API key → local demo so UI + nod gestures still work offline
+        if settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            pipelineTask = Task { await runDemoPipeline() }
+            return
+        }
+
         Task {
             let ok = await capture.requestPermission()
             guard ok else {
@@ -86,8 +92,54 @@ final class SessionController: ObservableObject {
         }
     }
 
+    /// Offline path: fake transcript + options so you can practice nod/shake.
+    private func runDemoPipeline() async {
+        phase = .listening
+        debugLine = "Demo mode (no API key)"
+        head.start()
+        try? await Task.sleep(nanoseconds: 1_200_000_000)
+        guard !Task.isCancelled else { return }
+        phase = .transcribing
+        try? await Task.sleep(nanoseconds: 400_000_000)
+        guard !Task.isCancelled else { return }
+        transcript = "So what do you actually think about that idea?"
+        phase = .thinking
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        guard !Task.isCancelled else { return }
+        options = [
+            ReplyOption(text: "I like it. Let's try a small version this week.", tone: "direct"),
+            ReplyOption(text: "Interesting - what's the riskiest assumption?", tone: "curious"),
+            ReplyOption(text: "Honestly? Feels like vibecoding with AirPods.", tone: "witty")
+        ]
+        selectedIndex = 0
+        phase = .choosing
+        debugLine = "Demo: nod = select, shake = next. TTS needs API key"
+    }
+
     func stopAndProcess() {
         guard phase == .listening else { return }
+
+        // Demo mode has no recorder
+        if settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            pipelineTask?.cancel()
+            pipelineTask = Task {
+                phase = .transcribing
+                transcript = "So what do you actually think about that idea?"
+                phase = .thinking
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+                options = [
+                    ReplyOption(text: "I like it. Let's try a small version this week.", tone: "direct"),
+                    ReplyOption(text: "Interesting - what's the riskiest assumption?", tone: "curious"),
+                    ReplyOption(text: "Honestly? Feels like vibecoding with AirPods.", tone: "witty")
+                ]
+                selectedIndex = 0
+                phase = .choosing
+                debugLine = "Demo: nod = select, shake = next"
+            }
+            return
+        }
+
         guard let url = capture.stop() else {
             phase = .error("No recording captured")
             return
@@ -176,6 +228,17 @@ final class SessionController: ObservableObject {
 
     private func speak(option: ReplyOption) async {
         do {
+            if settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // Demo: mark selection without TTS
+                let turn = ConversationTurn(heard: transcript, spoken: option.text)
+                history.insert(turn, at: 0)
+                phase = .idle
+                debugLine = "Demo selected: \(option.text)"
+                options = []
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                return
+            }
+
             phase = .speaking
             debugLine = "TTS \(settings.voiceID)…"
             let audio = try await client.synthesize(

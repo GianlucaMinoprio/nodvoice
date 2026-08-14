@@ -13,8 +13,8 @@ struct AppSettings: Equatable {
     static let languageAccount = "language"
     static let optionCountAccount = "option_count"
 
-    /// Fast default so options land quick. Override to grok-4.6 in Settings if you want.
-    static let defaultChatModel = "grok-4-1-fast-non-reasoning"
+    /// Default chat model for multi-reply. Fast alternatives: grok-4-1-fast-non-reasoning
+    static let defaultChatModel = "grok-4.5"
     static let defaultVoice = "eve"
     static let defaultLanguage = "en"
     static let defaultOptionCount = 3

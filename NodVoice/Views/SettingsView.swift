@@ -44,7 +44,7 @@ struct SettingsView: View {
                     TextField("Chat model", text: $chatModel)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Text("Fast default: grok-4-1-fast-non-reasoning. Heavier: grok-4.6")
+                    Text("Default: grok-4.5. Faster/cheaper: grok-4-1-fast-non-reasoning. Flagship: grok-4.6")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
