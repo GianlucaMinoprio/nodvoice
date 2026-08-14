@@ -106,13 +106,11 @@ actor XAIClient {
         }
 
         // Options must precede file per xAI STT docs
+        appendField(name: "format", value: "true")
         let language = language.trimmingCharacters(in: .whitespacesAndNewlines)
         if !language.isEmpty {
-            appendField(name: "format", value: "true")
             appendField(name: "language", value: language)
         }
-        appendField(name: "keyterm", value: "NodVoice")
-        appendField(name: "keyterm", value: "AirPods")
 
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)

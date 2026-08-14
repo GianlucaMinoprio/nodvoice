@@ -31,7 +31,7 @@ final class SessionController: ObservableObject {
     private var listenTask: Task<Void, Never>?
     private var dwellTask: Task<Void, Never>?
     private var ignoreGesturesUntil: TimeInterval = 0
-    private let dwellSeconds: TimeInterval = 2.0
+    private let dwellSeconds: TimeInterval = 3.0
 
     init() {
         settings = AppSettings.load()
@@ -337,7 +337,7 @@ final class SessionController: ObservableObject {
         ]
         selectedIndex = 0
         phase = .choosing
-        debugLine = "Hold on a reply for 2s to speak"
+        debugLine = "Hold on a reply for 3s to speak"
         lockGestures(0.5)
         restartDwell()
     }
@@ -400,7 +400,7 @@ final class SessionController: ObservableObject {
                 silentFor += 0.1
             }
 
-            if Date().timeIntervalSince(lastRotate) >= 2.4, phase == .listening {
+            if Date().timeIntervalSince(lastRotate) >= 3.2, phase == .listening {
                 lastRotate = Date()
                 await liveTranscribeChunk()
             }
@@ -433,13 +433,39 @@ final class SessionController: ObservableObject {
 
     private func appendLive(_ piece: String) {
         let piece = piece.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !piece.isEmpty else { return }
+        guard piece.count > 2 else { return }
         if transcript.isEmpty {
             transcript = piece
-        } else if !transcript.localizedCaseInsensitiveContains(piece) {
-            transcript += " " + piece
+            debugLine = "Live transcript"
+            return
         }
+        if transcript.localizedCaseInsensitiveContains(piece) { return }
+        if piece.localizedCaseInsensitiveContains(transcript) {
+            transcript = piece
+            debugLine = "Live transcript"
+            return
+        }
+        transcript = stitchTranscript(existing: transcript, incoming: piece)
         debugLine = "Live transcript"
+    }
+
+    private func stitchTranscript(existing: String, incoming: String) -> String {
+        let existingWords = existing.split(separator: " ").map(String.init)
+        let incomingWords = incoming.split(separator: " ").map(String.init)
+        guard !existingWords.isEmpty, !incomingWords.isEmpty else {
+            return (existing + " " + incoming).trimmingCharacters(in: .whitespaces)
+        }
+        let maxOverlap = min(6, existingWords.count, incomingWords.count)
+        if maxOverlap > 0 {
+            for n in stride(from: maxOverlap, through: 1, by: -1) {
+                let tail = existingWords.suffix(n).map { $0.lowercased() }
+                let head = incomingWords.prefix(n).map { $0.lowercased() }
+                if tail == head {
+                    return (existingWords + incomingWords.dropFirst(n)).joined(separator: " ")
+                }
+            }
+        }
+        return existing + " " + incoming
     }
 
     // MARK: - Pipeline
@@ -482,7 +508,7 @@ final class SessionController: ObservableObject {
             options = replies
             selectedIndex = 0
             phase = .choosing
-            debugLine = "Hold on a reply for 2s to speak"
+            debugLine = "Hold on a reply for 3s to speak"
             lockGestures(0.6)
             restartDwell()
             UINotificationFeedbackGenerator().notificationOccurred(.success)

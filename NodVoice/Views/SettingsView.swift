@@ -130,7 +130,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     LabeledContent("Stay on a reply") {
-                        Text("Speak after 2s")
+                        Text("Speak after 3s")
                             .foregroundStyle(.secondary)
                     }
                     LabeledContent("Silence") {

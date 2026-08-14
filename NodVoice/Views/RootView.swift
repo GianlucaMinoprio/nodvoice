@@ -168,9 +168,9 @@ struct RootView: View {
             Text("Session")
         } footer: {
             if session.allowsManualGestures {
-                Text("Simulator: shake starts or stops. Up/down picks. Hold 2s to speak.")
+                Text("Simulator: shake starts or stops. Up/down picks. Hold 3s to speak.")
             } else {
-                Text("Shake starts a session. Silence drafts replies. Nod down/up picks. Hold 2s to speak from the phone speaker. Shake stops.")
+                Text("Shake starts a session. Silence drafts replies. Nod down/up picks. Hold 3s to speak from the phone speaker. Shake stops.")
             }
         }
     }
@@ -241,8 +241,8 @@ struct RootView: View {
                 Text("Replies")
             } footer: {
                 Text(session.allowsManualGestures
-                     ? "Stay on a reply for 2s. The circle fills, then it speaks."
-                     : "Nod down next, nod up previous. Stay on one for 2s to speak.")
+                     ? "Stay on a reply for 3s. The circle fills, then it speaks."
+                     : "Nod down next, nod up previous. Stay on one for 3s to speak.")
             }
         }
     }
