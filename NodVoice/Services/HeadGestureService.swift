@@ -37,17 +37,17 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     private let manager = CMHeadphoneMotionManager()
     private let queue = OperationQueue()
 
-    private var nodPitchThreshold = 0.18          // ~10°
+    private var nodPitchThreshold = 0.14          // ~8°, relative to last half-second
     private var shakeYawThreshold = 0.24          // ~14°, still needs both sides
-    private var gestureCooldown: TimeInterval = 0.55
+    private var gestureCooldown: TimeInterval = 0.5
     private var lastGestureAt: TimeInterval = 0
     private var lastNodAt: TimeInterval = 0
 
-    private var pitchBaseline: Double?
+    private var pitchHistory: [(t: TimeInterval, v: Double)] = []
     private var yawBaseline: Double?
-    private var nodArmed = true
     private var shakeSign = 0
     private var shakeArmedAt: TimeInterval = 0
+    private let nodWindow: TimeInterval = 0.5
 
     override init() {
         super.init()
@@ -153,34 +153,38 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
             )
         }
 
-        if pitchBaseline == nil { pitchBaseline = pitch }
         if yawBaseline == nil { yawBaseline = yaw }
 
-        let pitchDelta = angleDifference(pitch, pitchBaseline ?? pitch)
-        let yawDelta = angleDifference(yaw, yawBaseline ?? yaw)
-        pitchBaseline = interpolateAngle(from: pitchBaseline ?? pitch, to: pitch, amount: 0.008)
-        yawBaseline = interpolateAngle(from: yawBaseline ?? yaw, to: yaw, amount: 0.012)
+        let now = ProcessInfo.processInfo.systemUptime
+        pitchHistory.append((now, pitch))
+        pitchHistory.removeAll { now - $0.t > nodWindow }
+        detectWindowedNod()
 
-        detectDirectionalNod(pitchDelta: pitchDelta)
+        let yawDelta = angleDifference(yaw, yawBaseline ?? yaw)
+        yawBaseline = interpolateAngle(from: yawBaseline ?? yaw, to: yaw, amount: 0.012)
         detectRealShake(yawDelta: yawDelta)
     }
 
-    /// Flipped vs the previous build: chin down = nodDown.
-    private func detectDirectionalNod(pitchDelta: Double) {
-        if nodArmed {
-            if pitchDelta <= -nodPitchThreshold {
-                nodArmed = false
-                lastNodAt = ProcessInfo.processInfo.systemUptime
-                shakeSign = 0
-                emit(.nodDown)
-            } else if pitchDelta >= nodPitchThreshold {
-                nodArmed = false
-                lastNodAt = ProcessInfo.processInfo.systemUptime
-                shakeSign = 0
-                emit(.nodUp)
-            }
-        } else if abs(pitchDelta) < nodPitchThreshold * 0.35 {
-            nodArmed = true
+    /// Compare to the last half-second, not a slow baseline.
+    /// Looking down at the phone is rest. A nod is extra motion from there.
+    private func detectWindowedNod() {
+        guard pitchHistory.count >= 5 else { return }
+        let origin = pitchHistory[0].v
+        let deltas = pitchHistory.map { angleDifference($0.v, origin) }
+        guard let lo = deltas.min(), let hi = deltas.max() else { return }
+
+        if lo <= -nodPitchThreshold, lo <= -hi {
+            pitchHistory.removeAll()
+            lastNodAt = ProcessInfo.processInfo.systemUptime
+            shakeSign = 0
+            emit(.nodDown)
+            return
+        }
+        if hi >= nodPitchThreshold, hi >= -lo {
+            pitchHistory.removeAll()
+            lastNodAt = ProcessInfo.processInfo.systemUptime
+            shakeSign = 0
+            emit(.nodUp)
         }
     }
 
@@ -237,10 +241,9 @@ final class HeadGestureService: NSObject, ObservableObject, CMHeadphoneMotionMan
     }
 
     private func resetTracking() {
-        pitchBaseline = nil
         yawBaseline = nil
-        nodArmed = true
         shakeSign = 0
+        pitchHistory.removeAll()
         sampleCount = 0
         liveLine = ""
     }

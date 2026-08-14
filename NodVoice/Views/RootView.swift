@@ -147,7 +147,7 @@ struct RootView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if session.settings.showMotionDebug, !session.motionStatus.isEmpty {
+            if isGestureFlash || session.settings.showMotionDebug, !session.motionStatus.isEmpty {
                 Text(session.motionStatus)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -171,6 +171,10 @@ struct RootView: View {
                  ? "Stay on a reply. The circle fills, then it speaks."
                  : "Shake to start. Pause to draft. Shake to stop.")
         }
+    }
+
+    private var isGestureFlash: Bool {
+        ["Nod down", "Nod up", "Shake"].contains(session.motionStatus)
     }
 
     private var airPodsLabel: String {
