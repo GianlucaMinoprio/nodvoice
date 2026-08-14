@@ -521,7 +521,6 @@ final class SessionController: ObservableObject {
             phase = .choosing
             debugLine = "Hold on a reply for 2.5s to speak"
             lockGestures(0.6)
-            head.start()
             restartDwell()
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         } catch is CancellationError {
