@@ -40,6 +40,24 @@ final class SessionController: ObservableObject {
         return options[selectedIndex]
     }
 
+    var isBusy: Bool {
+        switch phase {
+        case .transcribing, .thinking, .speaking:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var showsReset: Bool {
+        switch phase {
+        case .idle, .listening:
+            return false
+        default:
+            return true
+        }
+    }
+
     func onAppear() {
         head.start()
     }
@@ -65,6 +83,7 @@ final class SessionController: ObservableObject {
 
     func startListening() {
         pipelineTask?.cancel()
+        player.stop()
         options = []
         selectedIndex = 0
         transcript = ""
@@ -76,8 +95,9 @@ final class SessionController: ObservableObject {
             return
         }
 
-        Task {
+        pipelineTask = Task {
             let ok = await capture.requestPermission()
+            guard !Task.isCancelled else { return }
             guard ok else {
                 phase = .error("Microphone permission denied")
                 return
@@ -87,6 +107,7 @@ final class SessionController: ObservableObject {
                 phase = .listening
                 head.start()
             } catch {
+                guard !Task.isCancelled else { return }
                 phase = .error(error.localizedDescription)
             }
         }
@@ -176,6 +197,7 @@ final class SessionController: ObservableObject {
         options = []
         selectedIndex = 0
         phase = .idle
+        debugLine = ""
     }
 
     // MARK: - Gestures
@@ -193,6 +215,7 @@ final class SessionController: ObservableObject {
     // MARK: - Pipeline
 
     private func runPipeline(fileURL: URL) async {
+        defer { try? FileManager.default.removeItem(at: fileURL) }
         do {
             phase = .transcribing
             debugLine = "STT…"
@@ -221,6 +244,7 @@ final class SessionController: ObservableObject {
         } catch is CancellationError {
             // ignore
         } catch {
+            guard !Task.isCancelled else { return }
             phase = .error(error.localizedDescription)
             debugLine = ""
         }
@@ -249,17 +273,19 @@ final class SessionController: ObservableObject {
             )
             try Task.checkCancellation()
 
+            try await player.play(data: audio)
+            try Task.checkCancellation()
+
             let turn = ConversationTurn(heard: transcript, spoken: option.text)
             history.insert(turn, at: 0)
             if history.count > 20 { history = Array(history.prefix(20)) }
-
-            try await player.play(data: audio)
             phase = .idle
             debugLine = "Done"
             options = []
         } catch is CancellationError {
             // ignore
         } catch {
+            guard !Task.isCancelled else { return }
             phase = .error(error.localizedDescription)
         }
     }

@@ -11,6 +11,14 @@ struct SettingsView: View {
     @State private var optionCount: Int = AppSettings.defaultOptionCount
     @State private var showKey = false
 
+    private let modelChoices = [
+        "grok-4.5",
+        "grok-4.6",
+        "grok-4-1-fast-non-reasoning"
+    ]
+
+    private let voiceChoices = ["eve", "ara", "rex", "sal", "leo", "ursa"]
+
     var body: some View {
         NavigationStack {
             Form {
@@ -19,91 +27,128 @@ struct SettingsView: View {
                         Group {
                             if showKey {
                                 TextField("xai-…", text: $apiKey)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
                             } else {
                                 SecureField("xai-…", text: $apiKey)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
                             }
                         }
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .textContentType(.password)
+                        .font(.body.monospaced())
+
                         Button {
                             showKey.toggle()
                         } label: {
                             Image(systemName: showKey ? "eye.slash" : "eye")
                         }
+                        .accessibilityLabel(showKey ? "Hide API key" : "Show API key")
                     }
-                    Text("Stored in Keychain on this device. Demo only — use ephemeral tokens for production.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 } header: {
-                    Text("xAI API key")
+                    Text("xAI API Key")
+                } footer: {
+                    Text("Stored in the Keychain on this device. Fine for a personal demo. Use ephemeral tokens if you ship this.")
                 }
 
-                Section("Models") {
-                    TextField("Chat model", text: $chatModel)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("Default: grok-4.5. Faster/cheaper: grok-4-1-fast-non-reasoning. Flagship: grok-4.6")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                Section("Model") {
+                    Picker("Chat", selection: $chatModel) {
+                        ForEach(modelChoices, id: \.self) { model in
+                            Text(model).tag(model)
+                        }
+                    }
+                    if !modelChoices.contains(chatModel) {
+                        TextField("Custom model id", text: $chatModel)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.body.monospaced())
+                    }
 
-                    TextField("TTS voice_id", text: $voiceID)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("eve, ara, rex, sal, leo, …")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Picker("Voice", selection: $voiceID) {
+                        ForEach(voiceChoices, id: \.self) { voice in
+                            Text(voice).tag(voice)
+                        }
+                    }
+                    if !voiceChoices.contains(voiceID) {
+                        TextField("Custom voice id", text: $voiceID)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.body.monospaced())
+                    }
 
                     TextField("Language", text: $language)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
 
-                    Stepper("Reply options: \(optionCount)", value: $optionCount, in: 2...5)
+                    Stepper(value: $optionCount, in: 2...5) {
+                        Text("Reply options: \(optionCount)")
+                    }
                 }
 
                 Section("Gestures") {
-                    LabeledContent("Nod (pitch)") { Text("Select + speak") }
-                    LabeledContent("Shake (yaw)") { Text("Next option") }
-                    Text("Requires AirPods with head tracking. Put them in before listening.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    LabeledContent("Nod") {
+                        Text("Speak selected")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Shake") {
+                        Text("Next reply")
+                            .foregroundStyle(.secondary)
+                    }
+                } footer: {
+                    Text("Needs AirPods with head tracking, in-ear, on a physical iPhone.")
                 }
 
                 Section("About") {
-                    Text("NodVoice is a public clapback app: same product shape as “brain sensing” demos, implemented with CMHeadphoneMotionManager + Grok APIs.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Link("xAI voice docs", destination: URL(string: "https://docs.x.ai/developers/model-capabilities/audio/voice")!)
-                    Link("Original tweet", destination: URL(string: "https://x.com/gminoprio/status/2088126653507739720")!)
+                    LabeledContent("App") {
+                        Text("NodVoice 1.0")
+                            .foregroundStyle(.secondary)
+                    }
+                    Link(destination: URL(string: "https://docs.x.ai/developers/model-capabilities/audio/voice")!) {
+                        Label("xAI voice docs", systemImage: "link")
+                    }
+                    Link(destination: URL(string: "https://x.com/gminoprio/status/2088126653507739720")!) {
+                        Label("Original tweet", systemImage: "link")
+                    }
                 }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        session.settings.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-                        session.settings.chatModel = chatModel.trimmingCharacters(in: .whitespacesAndNewlines)
-                        session.settings.voiceID = voiceID.trimmingCharacters(in: .whitespacesAndNewlines)
-                        session.settings.language = language.trimmingCharacters(in: .whitespacesAndNewlines)
-                        session.settings.optionCount = optionCount
-                        session.saveSettings()
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
+                    Button("Save") { save() }
+                        .fontWeight(.semibold)
                 }
             }
-            .onAppear {
-                apiKey = session.settings.apiKey
-                chatModel = session.settings.chatModel
-                voiceID = session.settings.voiceID
-                language = session.settings.language
-                optionCount = session.settings.optionCount
-            }
+            .onAppear(perform: load)
         }
     }
+
+    private func load() {
+        apiKey = session.settings.apiKey
+        chatModel = session.settings.chatModel
+        voiceID = session.settings.voiceID
+        language = session.settings.language
+        optionCount = session.settings.optionCount
+    }
+
+    private func save() {
+        session.settings.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        session.settings.chatModel = nonempty(chatModel, default: AppSettings.defaultChatModel)
+        session.settings.voiceID = nonempty(voiceID, default: AppSettings.defaultVoice)
+        session.settings.language = nonempty(language, default: AppSettings.defaultLanguage)
+        session.settings.optionCount = optionCount
+        session.saveSettings()
+        dismiss()
+    }
+
+    private func nonempty(_ value: String, default defaultValue: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? defaultValue : trimmed
+    }
+}
+
+#Preview {
+    SettingsView()
+        .environmentObject(SessionController())
 }

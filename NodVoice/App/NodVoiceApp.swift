@@ -8,7 +8,6 @@ struct NodVoiceApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(session)
-                .preferredColorScheme(.dark)
         }
     }
 }

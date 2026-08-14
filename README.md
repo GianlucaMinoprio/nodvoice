@@ -74,10 +74,10 @@ NodVoice/
 | Step | Endpoint | Notes |
 |------|----------|--------|
 | STT | `POST https://api.x.ai/v1/stt` | multipart `file` + `language=en` |
-| Chat | `POST https://api.x.ai/v1/chat/completions` | model `grok-4.5` (override in Settings) |
+| Chat | `POST https://api.x.ai/v1/chat/completions` | model `grok-4.6` (override in Settings) |
 | TTS | `POST https://api.x.ai/v1/tts` | JSON `{ text, voice_id, language }` → raw mp3 |
 
-Default chat model is **`grok-4.5`** (what you asked for on the reply step). Swap to `grok-4-1-fast-non-reasoning` if you want cheaper/faster options, or `grok-4.6` for max quality.
+Default chat model is **`grok-4.6`**. Swap to `grok-4.5` or `grok-4-1-fast-non-reasoning` in Settings if you want cheaper/faster options.
 
 Without an API key the app runs a **demo loop** so nod/shake UI still works offline.
 

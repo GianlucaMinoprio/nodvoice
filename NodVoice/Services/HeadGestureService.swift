@@ -36,6 +36,9 @@ final class HeadGestureService: ObservableObject {
     private var yawExtremum: Double = 0
     private var trackingPitchSwing = false
     private var trackingYawSwing = false
+    private var pitchSwingStartedAt: TimeInterval = 0
+    private var yawSwingStartedAt: TimeInterval = 0
+    private let swingTimeout: TimeInterval = 1.25
 
     init() {
         queue.name = "nodvoice.headmotion"
@@ -48,21 +51,28 @@ final class HeadGestureService: ObservableObject {
 
     func start() {
         guard manager.isDeviceMotionAvailable else {
+            isAvailable = false
+            isRunning = false
             statusText = "No headphone motion API on this hardware"
             return
         }
         guard !isRunning else { return }
+        isAvailable = true
+        resetTracking()
 
         manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, error in
             guard let self else { return }
             if let error {
                 Task { @MainActor in
+                    self.manager.stopDeviceMotionUpdates()
+                    self.isRunning = false
                     self.statusText = "Motion error: \(error.localizedDescription)"
                 }
                 return
             }
             guard let motion else { return }
             Task { @MainActor in
+                guard self.isRunning else { return }
                 self.ingest(motion)
             }
         }
@@ -73,10 +83,7 @@ final class HeadGestureService: ObservableObject {
     func stop() {
         manager.stopDeviceMotionUpdates()
         isRunning = false
-        pitchBaseline = nil
-        yawBaseline = nil
-        trackingPitchSwing = false
-        trackingYawSwing = false
+        resetTracking()
         statusText = "AirPods motion: off"
     }
 
@@ -90,22 +97,28 @@ final class HeadGestureService: ObservableObject {
         if pitchBaseline == nil { pitchBaseline = pitch }
         if yawBaseline == nil { yawBaseline = yaw }
 
-        let pitchDelta = pitch - (pitchBaseline ?? pitch)
-        let yawDelta = yaw - (yawBaseline ?? yaw)
+        let pitchDelta = angleDifference(pitch, pitchBaseline ?? pitch)
+        let yawDelta = angleDifference(yaw, yawBaseline ?? yaw)
 
         // Slow baseline drift so resting pose doesn't stick forever
-        pitchBaseline = lerp(pitchBaseline ?? pitch, pitch, 0.02)
-        yawBaseline = lerp(yawBaseline ?? yaw, yaw, 0.02)
+        pitchBaseline = interpolateAngle(from: pitchBaseline ?? pitch, to: pitch, amount: 0.02)
+        yawBaseline = interpolateAngle(from: yawBaseline ?? yaw, to: yaw, amount: 0.02)
 
         detectNod(pitchDelta: pitchDelta)
         detectShake(yawDelta: yawDelta)
     }
 
     private func detectNod(pitchDelta: Double) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if trackingPitchSwing, now - pitchSwingStartedAt > swingTimeout {
+            trackingPitchSwing = false
+            pitchExtremum = 0
+        }
         // Looking for a down-then-up (or up-then-down) pitch excursion.
         if !trackingPitchSwing {
             if abs(pitchDelta) > nodPitchThreshold * 0.6 {
                 trackingPitchSwing = true
+                pitchSwingStartedAt = now
                 pitchExtremum = pitchDelta
             }
             return
@@ -132,9 +145,15 @@ final class HeadGestureService: ObservableObject {
     }
 
     private func detectShake(yawDelta: Double) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if trackingYawSwing, now - yawSwingStartedAt > swingTimeout {
+            trackingYawSwing = false
+            yawExtremum = 0
+        }
         if !trackingYawSwing {
             if abs(yawDelta) > shakeYawThreshold * 0.6 {
                 trackingYawSwing = true
+                yawSwingStartedAt = now
                 yawExtremum = yawDelta
             }
             return
@@ -182,7 +201,20 @@ final class HeadGestureService: ObservableObject {
         }
     }
 
-    private func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double {
-        a + (b - a) * t
+    private func resetTracking() {
+        pitchBaseline = nil
+        yawBaseline = nil
+        pitchExtremum = 0
+        yawExtremum = 0
+        trackingPitchSwing = false
+        trackingYawSwing = false
+    }
+
+    private func angleDifference(_ angle: Double, _ reference: Double) -> Double {
+        atan2(sin(angle - reference), cos(angle - reference))
+    }
+
+    private func interpolateAngle(from: Double, to: Double, amount: Double) -> Double {
+        from + angleDifference(to, from) * amount
     }
 }

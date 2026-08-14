@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum SessionPhase: Equatable {
     case idle
@@ -9,16 +10,46 @@ enum SessionPhase: Equatable {
     case speaking
     case error(String)
 
-    var label: String {
+    var label: String { shortLabel }
+
+    var shortLabel: String {
         switch self {
         case .idle: return "Ready"
-        case .listening: return "Listening…"
-        case .transcribing: return "Transcribing…"
-        case .thinking: return "Drafting replies…"
-        case .choosing: return "Nod to pick · shake to cycle"
-        case .speaking: return "Speaking…"
-        case .error(let message): return message
+        case .listening: return "Listening"
+        case .transcribing: return "Transcribing"
+        case .thinking: return "Drafting"
+        case .choosing: return "Choose reply"
+        case .speaking: return "Speaking"
+        case .error: return "Error"
         }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .idle: return "checkmark.circle"
+        case .listening: return "mic.fill"
+        case .transcribing: return "waveform"
+        case .thinking: return "brain.head.profile"
+        case .choosing: return "hand.point.up.left"
+        case .speaking: return "speaker.wave.2.fill"
+        case .error: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .idle: return .secondary
+        case .listening: return .red
+        case .transcribing, .thinking: return .orange
+        case .choosing: return .accentColor
+        case .speaking: return .blue
+        case .error: return .orange
+        }
+    }
+
+    var errorMessage: String? {
+        if case .error(let message) = self { return message }
+        return nil
     }
 }
 

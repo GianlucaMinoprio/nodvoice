@@ -13,8 +13,8 @@ struct AppSettings: Equatable {
     static let languageAccount = "language"
     static let optionCountAccount = "option_count"
 
-    /// Default chat model for multi-reply. Fast alternatives: grok-4-1-fast-non-reasoning
-    static let defaultChatModel = "grok-4.5"
+    /// Default chat model for multi-reply generation.
+    static let defaultChatModel = "grok-4.6"
     static let defaultVoice = "eve"
     static let defaultLanguage = "en"
     static let defaultOptionCount = 3
@@ -77,6 +77,7 @@ actor XAIClient {
     // MARK: - STT
 
     func transcribe(fileURL: URL, apiKey: String, language: String) async throws -> String {
+        let apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !apiKey.isEmpty else { throw XAIClientError.missingAPIKey }
 
         var request = URLRequest(url: baseURL.appendingPathComponent("stt"))
@@ -98,8 +99,11 @@ actor XAIClient {
         }
 
         // Options must precede file per xAI STT docs
-        appendField(name: "format", value: "true")
-        appendField(name: "language", value: language)
+        let language = language.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !language.isEmpty {
+            appendField(name: "format", value: "true")
+            appendField(name: "language", value: language)
+        }
         appendField(name: "keyterm", value: "NodVoice")
         appendField(name: "keyterm", value: "AirPods")
 
@@ -145,7 +149,7 @@ actor XAIClient {
         ]
 
         if !prior.isEmpty {
-            let history = prior.suffix(4).map { turn in
+            let history = prior.prefix(4).reversed().map { turn in
                 var block = "HEARD: \(turn.heard)"
                 if let spoken = turn.spoken { block += "\nUSER SAID: \(spoken)" }
                 return block
@@ -245,7 +249,9 @@ actor XAIClient {
     }
 
     private func throwIfNeeded(data: Data, response: URLResponse, expectJSONErrorOnly: Bool = false) throws {
-        guard let http = response as? HTTPURLResponse else { return }
+        guard let http = response as? HTTPURLResponse else {
+            throw XAIClientError.decodeFailed("invalid HTTP response")
+        }
         guard (200..<300).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? "<\(data.count) bytes>"
             throw XAIClientError.badStatus(http.statusCode, body)

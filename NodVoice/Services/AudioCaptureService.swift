@@ -42,19 +42,27 @@ final class AudioCaptureService: ObservableObject {
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
 
-        let recorder = try AVAudioRecorder(url: url, settings: settings)
-        recorder.isMeteringEnabled = true
-        guard recorder.record() else {
-            throw CaptureError.failedToStart
+        do {
+            let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.isMeteringEnabled = true
+            guard recorder.record() else {
+                throw CaptureError.failedToStart
+            }
+            self.recorder = recorder
+            isRecording = true
+        } catch {
+            fileURL = nil
+            try? FileManager.default.removeItem(at: url)
+            throw error
         }
-        self.recorder = recorder
-        isRecording = true
     }
 
     func stop() -> URL? {
+        guard recorder != nil else { return nil }
         recorder?.stop()
         recorder = nil
         isRecording = false
+        defer { fileURL = nil }
         return fileURL
     }
 
